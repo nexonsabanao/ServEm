@@ -1,0 +1,22 @@
+erDiagram
+    USERS ||--o| USER_PROFILES : has
+    USERS ||--o| PROVIDER_PROFILES : may_have
+    USERS ||--o{ PROVIDER_VERIFICATIONS : undergoes
+    SERVICE_CATEGORIES ||--o{ SERVICES : groups
+    PROVIDER_PROFILES ||--o{ SERVICES : publishes
+    USERS ||--o{ BOOKINGS : customer
+    PROVIDER_PROFILES ||--o{ BOOKINGS : provider
+    SERVICES ||--o{ BOOKINGS : booked_as
+    BOOKINGS ||--o{ BOOKING_EVENTS : history
+    BOOKINGS ||--o{ PAYMENT_TRANSACTIONS : paid_by
+    PAYMENT_TRANSACTIONS ||--o{ LEDGER_ENTRIES : posts
+    PAYMENT_TRANSACTIONS ||--o{ REFUNDS : may_have
+    PROVIDER_PROFILES ||--o{ PAYOUTS : receives
+    CONVERSATIONS ||--o{ MESSAGES : contains
+    USERS ||--o{ CONVERSATION_MEMBERS : joins
+    CONVERSATIONS ||--o{ CONVERSATION_MEMBERS : has
+    BOOKINGS ||--o{ REVIEWS : reviewed_after
+    BOOKINGS ||--o{ DISPUTES : may_have
+    DISPUTES ||--o{ DISPUTE_EVIDENCE : supported_by
+    USERS ||--o{ REPORTS : files
+    USERS ||--o{ AUDIT_EVENTS : actor

@@ -1,0 +1,11 @@
+flowchart LR
+  CODE[Source + lockfile] --> UNIT[Local/CI unit tests]
+  UNIT --> COMPOSE[Compose: Postgres + Redis]
+  COMPOSE --> INT[Integration + migrations + invariants]
+  INT --> IMG[Build multi-stage image]
+  IMG --> SCAN[Scan image + SBOM]
+  SCAN --> KIND[Load image into kind]
+  KIND --> MANIFEST[Apply test-only Kustomize manifests]
+  MANIFEST --> SMOKE[Probes + rollout + API smoke tests]
+  SMOKE --> CLEAN[Delete cluster and test volumes]
+  CLEAN --> REPORT[Retain safe test report tied to commit digest]

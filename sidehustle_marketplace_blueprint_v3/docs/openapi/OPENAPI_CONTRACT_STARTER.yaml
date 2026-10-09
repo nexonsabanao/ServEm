@@ -1,0 +1,332 @@
+openapi: 3.1.0
+info:
+  title: Side-Hustle Marketplace API
+  version: 0.3.0
+  description: >-
+    Partial contract starter for planning. It is NOT the complete API specification.
+    Before feature implementation, add every endpoint, complete schemas/security
+    rules, error responses, pagination, examples, deprecation policy and contract tests.
+servers:
+  - url: https://api.example.invalid/api/v1
+    description: Placeholder only; replace after approved domain/environment design.
+tags:
+  - name: Health
+  - name: Account
+  - name: Services
+  - name: Bookings
+paths:
+  /health/live:
+    get:
+      tags: [Health]
+      summary: Process liveness check
+      security: []
+      responses:
+        '200':
+          description: Process can make progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+  /health/ready:
+    get:
+      tags: [Health]
+      summary: Readiness check for traffic admission
+      description: Return only a minimal status; no secrets, SQL errors or dependency internals.
+      security: []
+      responses:
+        '200':
+          description: Ready to accept traffic
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '503':
+          description: Not ready; traffic should not be sent to this instance
+  /me:
+    get:
+      tags: [Account]
+      summary: Get the authenticated user's safe profile
+      security:
+        - oidcBearer: []
+      responses:
+        '200':
+          description: Current user's public-safe and account fields only
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /services:
+    get:
+      tags: [Services]
+      summary: Browse approved public service listings
+      security: []
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 512
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: categoryId
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 128
+      responses:
+        '200':
+          description: Paginated, public listings only
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServicePage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /bookings:
+    post:
+      tags: [Bookings]
+      summary: Create a booking request
+      description: >-
+        Server verifies customer identity, listing state, price/quote rules, service
+        eligibility and all policy checks. Client must not select authoritative fees,
+        provider earnings, taxes or booking status.
+      security:
+        - oidcBearer: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+      responses:
+        '201':
+          description: Booking request created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /bookings/{bookingId}:
+    get:
+      tags: [Bookings]
+      summary: Get a booking visible to the authenticated participant
+      security:
+        - oidcBearer: []
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+      responses:
+        '200':
+          description: Booking details visible to this participant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Not found or not visible, according to the approved disclosure policy
+components:
+  securitySchemes:
+    oidcBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Validate issuer, audience, signature, expiry and policy server-side.
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Required for retryable state-changing request. Server stores key + request hash + outcome with an expiry policy.
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 128
+  responses:
+    BadRequest:
+      description: Validation or request-shape error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Forbidden:
+      description: Authenticated but action not allowed by current policy
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Conflict:
+      description: State conflict, stale version or idempotency key reused with different request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    RateLimited:
+      description: Rate limit exceeded; may include Retry-After
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+  schemas:
+    HealthStatus:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+    Me:
+      type: object
+      additionalProperties: false
+      required: [id, accountStatus, availableModes]
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+          maxLength: 120
+        accountStatus:
+          type: string
+          enum: [active, limited, suspended, deletion_pending]
+        availableModes:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum: [customer, provider]
+    ServiceSummary:
+      type: object
+      additionalProperties: false
+      required: [id, title, providerId, currency, listingStatus]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+          maxLength: 160
+        providerId:
+          type: string
+        currency:
+          type: string
+          const: PHP
+        startingPriceCentavos:
+          type: integer
+          minimum: 0
+          description: Integer centavos; omit if service is quote-only.
+        listingStatus:
+          type: string
+          const: published
+    ServicePage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ServiceSummary'
+        nextCursor:
+          type: [string, 'null']
+    CreateBookingRequest:
+      type: object
+      additionalProperties: false
+      required: [serviceId, requestType]
+      properties:
+        serviceId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        requestType:
+          type: string
+          enum: [quote, fixed_price]
+        customerMessage:
+          type: string
+          maxLength: 4000
+        requestedStartAt:
+          type: [string, 'null']
+          format: date-time
+        acceptedTermsVersion:
+          type: string
+          maxLength: 64
+    Booking:
+      type: object
+      additionalProperties: false
+      required: [id, status, paymentStatus, currency, version]
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [requested, accepted, rejected, cancelled, in_progress, submitted, revision_requested, completed, disputed]
+        paymentStatus:
+          type: string
+          enum: [not_required, not_started, pending, succeeded, failed, refunded, disputed]
+        currency:
+          type: string
+          const: PHP
+        agreedTotalCentavos:
+          type: [integer, 'null']
+          minimum: 0
+        version:
+          type: integer
+          minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+    ApiError:
+      type: object
+      additionalProperties: false
+      required: [code, message, requestId]
+      properties:
+        code:
+          type: string
+          maxLength: 80
+        message:
+          type: string
+          maxLength: 300
+        requestId:
+          type: string
+        details:
+          type: [object, 'null']
+          description: Only safe validation details; never include secrets or sensitive personal data.

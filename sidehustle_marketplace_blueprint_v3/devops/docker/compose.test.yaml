@@ -1,0 +1,45 @@
+# LOCAL/CI TEST DEPENDENCIES ONLY. Never use with production data or credentials.
+# Host ports are bound to loopback. Pin tested image digests in CI/release workflows.
+name: sidehustle-test-dependencies
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: marketplace_test
+      POSTGRES_USER: marketplace_test
+      # Local-only fixture credential. It is not a secret and must never be reused.
+      POSTGRES_PASSWORD: local-test-only-change-me
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marketplace_test -d marketplace_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    volumes:
+      - postgres-test-data:/var/lib/postgresql/data
+    networks: [testnet]
+    restart: unless-stopped
+    # A dedicated disposable local test environment, not a hardened DB deployment.
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [testnet]
+    restart: unless-stopped
+    # No persistence; appropriate only for ephemeral local integration tests.
+
+networks:
+  testnet:
+    driver: bridge
+
+volumes:
+  postgres-test-data: {}

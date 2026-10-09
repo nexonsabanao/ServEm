@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-test-config
+data:
+  NODE_ENV: test
+  PORT: "3000"
+  LOG_LEVEL: warn
+  REDIS_URL: redis://redis:6379
+  # API must implement these endpoints before probes can pass.
+  HEALTH_LIVE_PATH: /health/live
+  HEALTH_READY_PATH: /health/ready
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sidehustle-api
+  labels:
+    app.kubernetes.io/name: sidehustle-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sidehustle-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sidehustle-api
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: sidehustle-api:test
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: api-test-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: api-test-secrets
+                  key: DATABASE_URL
+            - name: AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: api-test-secrets
+                  key: AUTH_SECRET
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 750m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sidehustle-api
+  labels:
+    app.kubernetes.io/name: sidehustle-api
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: sidehustle-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

@@ -1,0 +1,24 @@
+flowchart TD
+    START[Customer selects a service] --> REQUEST[Create booking request]
+    REQUEST --> VALIDATE{Server validates service, user, price, and state}
+    VALIDATE -- No --> ERROR[Return safe error]
+    VALIDATE -- Yes --> PROVIDER[Notify provider]
+    PROVIDER --> DECISION{Provider accepts?}
+    DECISION -- No --> REJECT[Booking rejected / request closed]
+    DECISION -- Yes --> ACCEPT[Booking accepted]
+    ACCEPT --> PAY[Create payment intent with approved PSP]
+    PAY --> WEBHOOK[PSP sends signed webhook]
+    WEBHOOK --> VERIFY{Signature + event ID + amount valid?}
+    VERIFY -- No --> QUARANTINE[Reject / quarantine / alert]
+    VERIFY -- Yes --> IDEMPOTENT[Idempotent event processing]
+    IDEMPOTENT --> PAYMENTSTATE[Update payment state + ledger in DB transaction]
+    PAYMENTSTATE --> INPROGRESS[Booking may proceed under policy]
+    INPROGRESS --> SUBMIT[Provider submits work]
+    SUBMIT --> CUSTOMERCONFIRM{Customer confirms or disputes?}
+    CUSTOMERCONFIRM -- Confirms --> COMPLETED[Mark booking completed]
+    CUSTOMERCONFIRM -- Disputes --> DISPUTE[Open dispute case]
+    COMPLETED --> ELIGIBLE[Payout eligibility evaluated]
+    ELIGIBLE --> PSPPAYOUT[Provider payout via PSP-supported flow]
+    PSPPAYOUT --> RECON[Reconcile payout and settlement]
+    DISPUTE --> REVIEW[Authorized staff review + audit trail]
+    REVIEW --> RESOLUTION[Policy-based resolution / refund if applicable]

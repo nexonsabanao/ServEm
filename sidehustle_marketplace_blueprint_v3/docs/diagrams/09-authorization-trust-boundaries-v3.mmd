@@ -1,0 +1,14 @@
+flowchart TB
+  CLIENT[Untrusted mobile/browser client] --> API[API validates auth + input]
+  API --> POLICY[Authorization policy: role + owner + status + context]
+  POLICY --> DOMAIN[Domain service with explicit state transition]
+  DOMAIN --> DB[(Database constraints + transaction)]
+  DOMAIN --> AUDIT[Audit/outbox event]
+  API --> FILES[Authorized short-lived upload/download URL]
+  FILES --> PRIVATE[Private object store + malware scanning]
+  ADMIN[Admin user with strong MFA] --> ADMINAPI[Separate privileged routes]
+  ADMINAPI --> POLICY
+  ADMINAPI --> AUDIT
+  PSP[External PSP] --> WEBHOOK[Webhook signature/timestamp verification]
+  WEBHOOK --> DEDUPE[Unique durable event ID + idempotent processor]
+  DEDUPE --> DOMAIN

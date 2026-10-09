@@ -1,0 +1,39 @@
+flowchart TB
+    subgraph Clients
+      MOB[Flutter Android/iOS]
+      ADMIN[Admin Web + Mandatory MFA]
+      PUBLIC[Public Website]
+    end
+    subgraph Edge[Protected Edge]
+      TLS[TLS / WAF or API Gateway / Rate Limits]
+    end
+    subgraph App[Private Application Network]
+      API[NestJS API]
+      WORKERS[Background Workers]
+    end
+    subgraph Data[Private Data Services]
+      DB[(PostgreSQL + encrypted backups)]
+      OBJ[(Private Object Storage + malware scan)]
+      CACHE[(Redis, optional)]
+      KMS[Secrets Manager / KMS]
+    end
+    subgraph External[Approved External Services]
+      AUTH[OIDC Identity Provider]
+      PAY[Payment Provider]
+      IDV[Identity Verification Provider]
+      NOTIFY[Email/SMS/Push]
+    end
+    MOB --> TLS
+    ADMIN --> TLS
+    PUBLIC --> TLS
+    TLS --> API
+    API --> DB
+    API --> OBJ
+    API --> CACHE
+    API --> WORKERS
+    API --> AUTH
+    API --> PAY
+    API --> IDV
+    WORKERS --> NOTIFY
+    API --> KMS
+    WORKERS --> KMS

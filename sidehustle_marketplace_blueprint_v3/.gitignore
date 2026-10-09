@@ -1,0 +1,29 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+
+# Dependency/build artifacts
+node_modules/
+dist/
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.next/
+coverage/
+*.log
+.DS_Store
+
+# Local test outputs
+.test-results/
+playwright-report/
+
+# IDE
+.idea/
+.vscode/

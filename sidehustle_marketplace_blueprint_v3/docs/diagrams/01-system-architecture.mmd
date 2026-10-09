@@ -1,0 +1,16 @@
+flowchart TB
+    C[Customer / Provider] --> M[Flutter App\nAndroid + iOS]
+    A[Operations Staff] --> W[Next.js Admin Portal]
+    V[Public Visitors] --> S[Next.js Public Website]
+    M -->|HTTPS / JSON| API[NestJS API\nModular Monolith]
+    W -->|HTTPS / JSON + MFA| API
+    S -->|Public APIs only| API
+    API --> IDP[OIDC Identity Provider]
+    API --> DB[(Managed PostgreSQL)]
+    API --> CACHE[(Redis / Queue, when needed)]
+    API --> OBJ[Private Object Storage]
+    API --> PSP[Approved Payment Provider]
+    PSP -->|Verified signed webhooks| API
+    API --> MSG[Email / SMS / Push]
+    API --> OBS[Logs / Metrics / Alerts]
+    API --> VERIFY[Identity Verification Vendor]

@@ -1,0 +1,21 @@
+flowchart TB
+  C[Flutter Customer / Provider App] -->|HTTPS + OIDC PKCE| EDGE[API Edge / Rate Limiting]
+  AW[Next.js Admin Portal] -->|HTTPS + strong MFA| EDGE
+  PW[Next.js Public Website] -->|Public APIs only| EDGE
+  EDGE --> API[NestJS Modular Monolith]
+  API --> AUTH[Managed OIDC Identity Provider]
+  API --> DB[(PostgreSQL - source of truth)]
+  API --> REDIS[(Redis - optional transient cache / queue)]
+  API --> OBJ[Private Object Storage + Malware Scan]
+  API --> PSP[Approved Payment Service Provider]
+  PSP -->|Signed, deduplicated webhooks| API
+  API --> IDV[Identity Verification Vendor]
+  API --> NOTIFY[Email / SMS / Push]
+  API --> OBS[Redacted Logs / Metrics / Traces / Alerts]
+  subgraph Release_Controls[Release and Trust Controls]
+    CI[CI: tests, scans, SBOM, build]
+    STAGE[Isolated Staging + PSP Sandbox]
+    APPROVAL[Human release approval + rollback plan]
+  end
+  CI --> STAGE --> APPROVAL
+  APPROVAL -. immutable artifact digest .-> API
