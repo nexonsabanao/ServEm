@@ -1,3 +1,11 @@
+export type ServiceCategory =
+  | 'Home Repair'
+  | 'Cleaning'
+  | 'Tutoring'
+  | 'Events'
+  | 'Errands'
+  | 'Beauty';
+
 export type ServiceSummary = {
   id: string;
   title: string;
@@ -5,6 +13,13 @@ export type ServiceSummary = {
   currency: 'PHP';
   startingPriceCentavos?: number;
   listingStatus: 'published';
+  /**
+   * Design-preview only. The live catalog contract does not define categories or
+   * coverage areas yet, so both stay optional and the interface degrades quietly
+   * when they are missing.
+   */
+  category?: ServiceCategory;
+  area?: string;
 };
 
 export type Catalog = {
@@ -14,37 +29,94 @@ export type Catalog = {
   message?: string;
 };
 
+/** Display order for the category rail. Falls back to discovery order for unknown values. */
+export const CATEGORY_ORDER: ServiceCategory[] = [
+  'Home Repair',
+  'Cleaning',
+  'Tutoring',
+  'Events',
+  'Errands',
+  'Beauty',
+];
+
 const previewServices: ServiceSummary[] = [
   {
-    id: 'preview-brand-kit',
-    title: 'A clear brand identity for your next chapter',
+    id: 'preview-condo-deep-clean',
+    title: 'Deep clean for a 2-bedroom condo',
     providerId: 'preview-provider-1',
     currency: 'PHP',
-    startingPriceCentavos: 450000,
+    startingPriceCentavos: 180000,
     listingStatus: 'published',
+    category: 'Cleaning',
+    area: 'Bacoor',
   },
   {
-    id: 'preview-web-page',
-    title: 'A thoughtful landing page built around your story',
+    id: 'preview-aircon-service',
+    title: 'Aircon cleaning and tune-up at home',
     providerId: 'preview-provider-2',
     currency: 'PHP',
-    startingPriceCentavos: 850000,
+    startingPriceCentavos: 80000,
     listingStatus: 'published',
+    category: 'Home Repair',
+    area: 'Imus',
   },
   {
-    id: 'preview-copywriting',
-    title: 'Website copy that sounds like you',
+    id: 'preview-math-tutor',
+    title: 'Weekly math tutoring for Grades 7–10',
     providerId: 'preview-provider-3',
     currency: 'PHP',
+    startingPriceCentavos: 60000,
     listingStatus: 'published',
+    category: 'Tutoring',
+    area: 'Dasmariñas',
   },
   {
-    id: 'preview-video-edit',
-    title: 'Short-form video editing for your next campaign',
+    id: 'preview-handyman',
+    title: 'Handyman for small fixes around the house',
     providerId: 'preview-provider-4',
     currency: 'PHP',
-    startingPriceCentavos: 250000,
     listingStatus: 'published',
+    category: 'Home Repair',
+    area: 'General Trias',
+  },
+  {
+    id: 'preview-event-hair-makeup',
+    title: 'On-site hair and makeup for weddings',
+    providerId: 'preview-provider-5',
+    currency: 'PHP',
+    startingPriceCentavos: 350000,
+    listingStatus: 'published',
+    category: 'Beauty',
+    area: 'Tagaytay',
+  },
+  {
+    id: 'preview-furniture-assembly',
+    title: 'Furniture assembly and wall mounting',
+    providerId: 'preview-provider-6',
+    currency: 'PHP',
+    startingPriceCentavos: 90000,
+    listingStatus: 'published',
+    category: 'Home Repair',
+    area: 'Bacoor',
+  },
+  {
+    id: 'preview-errand-runner',
+    title: 'Errand runner for groceries and bills',
+    providerId: 'preview-provider-7',
+    currency: 'PHP',
+    startingPriceCentavos: 50000,
+    listingStatus: 'published',
+    category: 'Errands',
+    area: 'Imus',
+  },
+  {
+    id: 'preview-event-photo',
+    title: 'Event photography for birthdays and reunions',
+    providerId: 'preview-provider-8',
+    currency: 'PHP',
+    listingStatus: 'published',
+    category: 'Events',
+    area: 'Dasmariñas',
   },
 ];
 
@@ -56,14 +128,14 @@ export async function getCatalog(cursor?: string | null): Promise<Catalog> {
         status: 'preview',
         items: previewServices,
         nextCursor: null,
-        message: 'Sample listings for the design preview. No booking request can be sent.',
+        message: 'Sample listings for the design preview, not live ServMate offers.',
       };
     }
     return {
       status: 'unavailable',
       items: [],
       nextCursor: null,
-      message: 'The services catalog is not connected yet.',
+      message: 'The local services catalog is not connected yet.',
     };
   }
 
@@ -81,7 +153,7 @@ export async function getCatalog(cursor?: string | null): Promise<Catalog> {
       return {
         status: 'unavailable',
         items: [],
-        message: 'The services catalog is temporarily unavailable. Try again shortly.',
+        message: 'The local services catalog is temporarily unavailable. Try again shortly.',
       };
     }
 
@@ -93,7 +165,7 @@ export async function getCatalog(cursor?: string | null): Promise<Catalog> {
       status: 'unavailable',
       items: [],
       nextCursor: null,
-      message: 'We could not reach the services catalog. Check your connection and try again.',
+      message: 'The services catalog could not be reached. Check your connection and try again.',
     };
   }
 }
@@ -107,7 +179,11 @@ function parseServicePage(value: unknown): { items: ServiceSummary[]; nextCursor
     throw new Error('Invalid catalog response');
   }
   const nextCursor = value.nextCursor;
-  if (nextCursor !== undefined && nextCursor !== null && (typeof nextCursor !== 'string' || nextCursor.length > 512)) {
+  if (
+    nextCursor !== undefined &&
+    nextCursor !== null &&
+    (typeof nextCursor !== 'string' || nextCursor.length > 512)
+  ) {
     throw new Error('Invalid catalog cursor');
   }
 
