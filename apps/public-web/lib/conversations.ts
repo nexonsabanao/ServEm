@@ -1,15 +1,19 @@
 import { randomUUID } from 'node:crypto';
-import { feedServices, providerById } from './feed-data';
+import { bookingTitle } from './bookings';
+import { feedService } from './servmate-profile';
 import {
   query,
   transact,
   type BookingRecord,
+  type BookingStatus,
+  type Database,
   type MessageRecord,
 } from './store';
 
 export type ConversationMessage = {
   id: string;
-  sender: 'customer';
+  /** Which side of the counter wrote it. */
+  sender: 'customer' | 'servmate';
   body: string;
   createdAt: string;
 };
@@ -20,18 +24,20 @@ export type Conversation = {
   serviceTitle: string;
   providerName: string;
   area?: string;
-  status: 'requested' | 'cancelled';
+  /** The booking's full status, so a thread never mislabels a live job. */
+  status: BookingStatus;
   lastMessage: string;
   updatedAt: string;
   messages: ConversationMessage[];
 };
 
 function toConversation(
+  database: Database,
   booking: BookingRecord,
   records: MessageRecord[],
 ): Conversation {
-  const service = feedServices.find((item) => item.id === booking.serviceId);
-  const provider = service ? providerById.get(service.providerId) : undefined;
+  const service = booking.serviceId ? feedService(database, booking.serviceId) : undefined;
+  const providerName = service?.provider.name ?? 'Your ServMate';
   const messages: ConversationMessage[] = [
     {
       id: `${booking.id}:request`,
@@ -54,8 +60,8 @@ function toConversation(
   return {
     bookingId: booking.id,
     reference: booking.reference,
-    serviceTitle: booking.serviceTitle,
-    providerName: provider?.name ?? 'Your ServMate',
+    serviceTitle: bookingTitle(database, booking),
+    providerName,
     ...(booking.area ? { area: booking.area } : {}),
     status: booking.status,
     lastMessage: latest?.body ?? '',
@@ -68,7 +74,7 @@ export async function listConversations(userId: string): Promise<Conversation[]>
   return query((database) =>
     database.bookings
       .filter((booking) => booking.userId === userId)
-      .map((booking) => toConversation(booking, database.messages))
+      .map((booking) => toConversation(database, booking, database.messages))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
   );
 }
@@ -81,7 +87,7 @@ export async function getConversation(
     const booking = database.bookings.find(
       (candidate) => candidate.id === bookingId && candidate.userId === userId,
     );
-    return booking ? toConversation(booking, database.messages) : null;
+    return booking ? toConversation(database, booking, database.messages) : null;
   });
 }
 

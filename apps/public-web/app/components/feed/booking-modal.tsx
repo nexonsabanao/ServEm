@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { CloseIcon, LocationIcon, StarIcon } from '@/app/components/icons';
-import { providerById, type FeedService } from '@/lib/feed-data';
-import { formatPhp } from '@/lib/format';
+import type { FeedService } from '@/lib/feed-data';
+import { formatFromPrice } from '@/lib/format';
 import { ServiceThumb, StarRating } from './service-card';
 
 /**
@@ -27,7 +27,7 @@ export function BookingModal({
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
   const [confirmed, setConfirmed] = useState<string | null>(null);
-  const provider = service ? providerById.get(service.providerId) : undefined;
+  const provider = service?.provider;
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -106,7 +106,7 @@ export function BookingModal({
                     <StarRating rating={service.rating} />
                     <span className="book-area"><LocationIcon /> {service.area}</span>
                   </div>
-                  <p className="book-price">{formatPhp(service.startingPriceCentavos)} <span>starting</span></p>
+                  <p className="book-price">{formatFromPrice(service.startingPriceCentavos)} <span>starting</span></p>
                 </div>
               </div>
 

@@ -1,4 +1,5 @@
 import { hashPassword, verifyPassword } from './auth';
+import { bookingTitle } from './bookings';
 import { mergePreferences, type AccountPreferences } from './preferences';
 import { mergeProfile, type CustomerProfile, type ProfilePatch } from './profile';
 import { query, transact } from './store';
@@ -174,7 +175,7 @@ export async function exportAccountData(userId: string): Promise<ExportedAccount
       },
       requests: bookings.map((booking) => ({
         reference: booking.reference,
-        serviceTitle: booking.serviceTitle,
+        serviceTitle: bookingTitle(database, booking),
         ...(booking.area ? { area: booking.area } : {}),
         message: booking.message,
         status: booking.status,
@@ -182,10 +183,10 @@ export async function exportAccountData(userId: string): Promise<ExportedAccount
         ...(booking.cancelledAt ? { cancelledAt: booking.cancelledAt } : {}),
       })),
       messages: database.messages
-        .filter((message) => referenceById.has(message.bookingId))
+        .filter((message) => Boolean(message.bookingId && referenceById.has(message.bookingId)))
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
         .map((message) => ({
-          reference: referenceById.get(message.bookingId) ?? '',
+          reference: (message.bookingId && referenceById.get(message.bookingId)) || '',
           body: message.body,
           createdAt: message.createdAt,
         })),

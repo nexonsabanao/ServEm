@@ -78,7 +78,7 @@ export function ServmateWorkbench({ data, accountName }: { data: WorkbenchData; 
   const openRequests = data.requests.filter((request) => request.status === 'requested');
   const waiting = openRequests.filter((request) => !state.decisions[request.id]);
   const handled = data.requests.filter(
-    (request) => state.decisions[request.id] || request.status === 'cancelled',
+    (request) => Boolean(state.decisions[request.id]) || request.status !== 'requested',
   );
   const draft = state.profiles[provider.id];
   const headline = draft?.headline.trim() || provider.headline;
@@ -348,7 +348,7 @@ export function ServmateWorkbench({ data, accountName }: { data: WorkbenchData; 
                   <div>
                     <dt>Turnaround</dt>
                     <span className="sm-leader" />
-                    <dd>{listing.turnaround}</dd>
+                    <dd>{listing.availability}</dd>
                   </div>
                   <div className="sm-listing-rate">
                     <dt>Rate from</dt>

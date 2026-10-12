@@ -3,8 +3,8 @@ import { redirect } from 'next/navigation';
 import { CancelRequestButton } from '@/app/components/cancel-request-button';
 import { WorkOrderRow } from '@/app/components/work-order';
 import { getSessionAccount } from '@/lib/auth';
-import { listBookings, summariseBookings, type Booking } from '@/lib/bookings';
-import { getCatalog } from '@/lib/catalog';
+import { OPEN_BOOKING_STATUSES, listBookings, summariseBookings, type Booking } from '@/lib/bookings';
+import { getCatalog } from '@/lib/catalog-source';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +34,7 @@ export default async function RequestsPage({
   const listed = new Set(catalog.items.map((item) => item.id));
 
   const visible = bookings.filter((booking) => {
-    if (filter === 'open') return booking.status === 'requested';
+    if (filter === 'open') return OPEN_BOOKING_STATUSES.includes(booking.status);
     if (filter === 'cancelled') return booking.status === 'cancelled';
     return true;
   });

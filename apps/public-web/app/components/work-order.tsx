@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { formatDay, formatDayShort, formatRate, formatTimeOfDay } from '@/lib/format';
+import { BOOKING_STATUS_LABELS } from '@/lib/presentation';
 import type { Booking } from '@/lib/bookings';
 
 /**
@@ -8,10 +9,13 @@ import type { Booking } from '@/lib/bookings';
  * Everything here renders real records — no placeholder rows.
  */
 
-export const STATUS_LABELS: Record<Booking['status'], string> = {
-  requested: 'Requested',
-  cancelled: 'Withdrawn',
-};
+/**
+ * The status words for a booking.
+ *
+ * Re-exported from the shared presentation map rather than declared here, so
+ * the docket and every other surface name a status the same way.
+ */
+export const STATUS_LABELS: Record<Booking['status'], string> = BOOKING_STATUS_LABELS;
 
 export function StatusStamp({ status }: { status: Booking['status'] }) {
   return (

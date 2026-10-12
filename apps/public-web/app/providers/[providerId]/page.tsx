@@ -6,9 +6,9 @@ import { ProviderServiceList } from '@/app/components/feed/provider-services';
 import { ChevronRightIcon, LocationIcon, StarIcon, VerifiedIcon } from '@/app/components/icons';
 import { getSessionAccount } from '@/lib/auth';
 import { listBookings, summariseBookings } from '@/lib/bookings';
-import { providerById } from '@/lib/feed-data';
-import { formatPhp, formatReplies } from '@/lib/format';
-import { servicesFor } from '@/lib/servmate';
+import { feedServiceFrom, providerFrom } from '@/lib/feed-data';
+import { formatFromPrice, formatReplies } from '@/lib/format';
+import { getProviderView } from '@/lib/servmate-profile';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +16,7 @@ type Params = Promise<{ providerId: string }>;
 
 export async function generateMetadata({ params }: { params: Params }) {
   const { providerId } = await params;
-  const provider = providerById.get(providerId);
+  const provider = await getProviderView(providerId);
   return {
     title: provider ? `${provider.name} — ServEm` : 'ServMate — ServEm',
   };
@@ -25,25 +25,26 @@ export async function generateMetadata({ params }: { params: Params }) {
 /**
  * A ServMate's public page — the customer-facing half of the provider design.
  *
- * It reads the same roster the workbench previews, so a ServMate's own view of
- * their listings and a customer's view of them cannot drift apart. Everything
- * shown is the sample catalog; there is no provider self-service API, so the
- * page presents rather than edits.
+ * It reads the same stored profile and listings the workbench shows its owner,
+ * so a ServMate's own view of their listings and a customer's view of them
+ * cannot drift apart. The rating and the review count are computed from that
+ * ServMate's published reviews rather than stored, so the number on this page is
+ * always the average of the reviews behind it.
  */
 export default async function ProviderProfilePage({ params }: { params: Params }) {
   const account = await getSessionAccount();
   if (!account) redirect('/?signin=1');
 
   const { providerId } = await params;
-  const provider = providerById.get(providerId);
-  if (!provider) notFound();
+  const view = await getProviderView(providerId);
+  if (!view) notFound();
 
   const [bookings] = await Promise.all([listBookings(account.id)]);
   const summary = summariseBookings(bookings);
-  const services = servicesFor(providerId);
-  const covers = Array.from(new Set([provider.area, ...services.map((service) => service.area)]));
-  const from = services[0]?.startingPriceCentavos;
-  const categories = Array.from(new Set(services.map((service) => service.category)));
+  const provider = providerFrom(view);
+  const services = view.listings.map((listing) => feedServiceFrom(listing, provider));
+  const covers = view.areas;
+  const categories = view.categories;
   const about =
     categories.length > 0
       ? `Works in ${categories.join(', ').toLowerCase()} across ${covers.join(' and ')}. Replies in about ${formatReplies(provider.responseMins).replace('~', '')}, rated ${provider.rating.toFixed(1)} across ${provider.reviews.toLocaleString('en-PH')} reviews.`
@@ -114,7 +115,7 @@ export default async function ProviderProfilePage({ params }: { params: Params }
             <div className="pv-facts-from">
               <dt>Rates from</dt>
               <span className="pv-leader" />
-              <dd className="pv-price">{from === undefined ? 'Ask for a quote' : formatPhp(from)}</dd>
+              <dd className="pv-price">{fromLabel(services)}</dd>
             </div>
           </dl>
         </section>
@@ -125,7 +126,8 @@ export default async function ProviderProfilePage({ params }: { params: Params }
           </div>
           <div className="pv-about-block">
             <p>
-              {about ||
+              {view.bio ||
+                about ||
                 `${provider.name} has not written a description yet. Their listings and coverage areas are below.`}
             </p>
             <dl className="pv-about-facts">
@@ -165,6 +167,14 @@ export default async function ProviderProfilePage({ params }: { params: Params }
       </div>
     </AppShell>
   );
+}
+
+/** The cheapest published rate on this page, or the honest answer when unpriced. */
+function fromLabel(services: { startingPriceCentavos?: number }[]): string {
+  const prices = services
+    .map((service) => service.startingPriceCentavos)
+    .filter((price): price is number => price !== undefined);
+  return prices.length === 0 ? 'Ask for a quote' : formatFromPrice(Math.min(...prices));
 }
 
 function firstLetter(value: string): string {

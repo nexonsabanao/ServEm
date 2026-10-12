@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LocationIcon } from '@/app/components/icons';
 import { gradientStyle, type FeedService } from '@/lib/feed-data';
-import { formatPhp } from '@/lib/format';
+import { formatFromPrice } from '@/lib/format';
 import { BookingModal } from './booking-modal';
 import { ServiceGlyph } from './service-card';
 
@@ -34,11 +34,11 @@ export function ProviderServiceList({ services }: { services: FeedService[] }) {
                 <span className="pv-dot" aria-hidden="true">·</span>
                 <LocationIcon /> {service.area}
                 <span className="pv-dot" aria-hidden="true">·</span>
-                {service.turnaround}
+                {service.availability}
               </p>
             </div>
             <p className="pv-svc-price">
-              {formatPhp(service.startingPriceCentavos)}
+              {formatFromPrice(service.startingPriceCentavos)}
               <span>starting</span>
             </p>
             <button type="button" className="pv-svc-request" onClick={() => setBooking(service)}>

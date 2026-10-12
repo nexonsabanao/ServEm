@@ -1,4 +1,4 @@
-import { SERVICE_AREAS } from './feed-data';
+import { SERVICE_AREAS } from './presentation';
 
 /**
  * Account preferences.

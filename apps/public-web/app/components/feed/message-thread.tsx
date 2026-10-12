@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronRightIcon } from '@/app/components/icons';
 import type { Conversation } from '@/lib/conversations';
+import { OPEN_BOOKING_STATUSES } from '@/lib/policy';
 
 const MESSAGE_LIMIT = 4000;
 const MESSAGE_TIME = new Intl.DateTimeFormat('en-PH', {
@@ -109,7 +110,7 @@ export function MessageThread({ conversation }: { conversation: Conversation }) 
         ))}
       </ol>
 
-      {conversation.status === 'requested' ? (
+      {OPEN_BOOKING_STATUSES.includes(conversation.status) ? (
         <form className="thread-composer" onSubmit={(event) => void sendMessage(event)}>
           <label htmlFor="thread-message">Message your ServMate</label>
           <textarea
@@ -130,7 +131,9 @@ export function MessageThread({ conversation }: { conversation: Conversation }) 
           {error && <p className="thread-error" id="thread-error" role="alert">{error}</p>}
         </form>
       ) : (
-        <p className="thread-closed" role="status">This request was withdrawn. The conversation is read-only.</p>
+        <p className="thread-closed" role="status">
+          This request is closed. The conversation is read-only.
+        </p>
       )}
     </section>
   );

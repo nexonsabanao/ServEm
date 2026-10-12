@@ -11,6 +11,7 @@ import {
   type UserRecord,
 } from './store';
 import { DEFAULT_PREFERENCES, mergePreferences, type AccountPreferences } from './preferences';
+import { servMateProfileFor, type Decision } from './policy';
 import { mergeProfile, type CustomerProfile } from './profile';
 
 const derive = promisify(scrypt) as (
@@ -285,6 +286,14 @@ export type SessionProfile = Account & {
   createdAt: string;
   identities: IdentityRecord[];
   hasPassword: boolean;
+  /**
+   * Provider capability. One account may be both a customer and a ServMate
+   * (blueprint §1), so this is a flag beside the customer profile rather than a
+   * separate account type.
+   */
+  isServMate: boolean;
+  /** The ServMate profile id when provider capability is enabled. */
+  servmateProfileId?: string;
   /** The customer's own profile, folded onto the defaults. */
   profile: CustomerProfile;
 };
@@ -299,6 +308,7 @@ export async function getSessionProfile(): Promise<SessionProfile | null> {
     if (new Date(session.expiresAt).getTime() <= Date.now()) return null;
     const user = database.users.find((item) => item.id === session.userId);
     if (!user) return null;
+    const provider = user.isServMate ? servMateProfileFor(database, user.id) : undefined;
     return {
       id: user.id,
       name: user.name,
@@ -306,7 +316,92 @@ export async function getSessionProfile(): Promise<SessionProfile | null> {
       createdAt: user.createdAt,
       identities: user.identities ?? [],
       hasPassword: Boolean(user.passwordHash),
+      isServMate: user.isServMate === true,
+      ...(provider ? { servmateProfileId: provider.id } : {}),
       profile: mergeProfile(user.profile),
     };
   });
+}
+
+/* ------------------------------------------------------------------ *
+ * Server-side authorization guards.
+ *
+ * Routes and server components call these instead of reading the cookie
+ * themselves, so "is anyone signed in" and "is this person a provider" are
+ * answered once, in one place, and a failure always arrives as a typed error
+ * rather than a silently undefined value.
+ * ------------------------------------------------------------------ */
+
+/**
+ * A refusal that carries the HTTP status it should become.
+ *
+ * 404 is used for a resource the caller may not see, so a private job or an
+ * unowned booking is indistinguishable from one that does not exist.
+ */
+export class AuthError extends Error {
+  constructor(
+    public readonly status: 401 | 403 | 404,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
+
+/** The signed-in account, or a 401. */
+export async function requireSession(): Promise<Account & { token: string }> {
+  const token = await getSessionToken();
+  if (!token) throw new AuthError(401, 'Sign in to continue.');
+
+  const account = await query((database) => {
+    const session = database.sessions.find((item) => item.token === token);
+    if (!session) return null;
+    if (new Date(session.expiresAt).getTime() <= Date.now()) return null;
+    const user = database.users.find((item) => item.id === session.userId);
+    return user ? { ...toAccount(user), token } : null;
+  });
+
+  if (!account) throw new AuthError(401, 'Your session ended. Sign in again.');
+  return account;
+}
+
+/**
+ * The signed-in account plus its provider capability, or a 403.
+ *
+ * Used by every ServMate-only operation: the feed of available jobs, offer
+ * submission, listing management and work progress.
+ */
+export async function requireServMate(): Promise<
+  Account & { token: string; servmateProfileId: string }
+> {
+  const account = await requireSession();
+
+  const provider = await query((database) => {
+    const user = database.users.find((item) => item.id === account.id);
+    if (!user?.isServMate) return null;
+    return servMateProfileFor(database, account.id) ?? null;
+  });
+
+  if (!provider) throw new AuthError(403, 'ServMate capability is not enabled on this account.');
+  return { ...account, servmateProfileId: provider.id };
+}
+
+/**
+ * Asserts that the session account owns the resource.
+ * A mismatch is a 404, so the response cannot confirm the resource exists.
+ */
+export function assertOwner(resourceUserId: string, sessionUserId: string): void {
+  if (resourceUserId !== sessionUserId) throw new AuthError(404, 'Not found.');
+}
+
+/**
+ * Turns a policy decision into a refusal.
+ *
+ * Every denial becomes the same 404 with the same message, so neither the text
+ * nor the status tells a caller which rule stopped them — or whether there was
+ * anything there to stop them from reading (blueprint §6.4).
+ */
+export function assertAllowed<T>(decision: Decision<T>): T {
+  if (!decision.allowed) throw new AuthError(404, 'Not found.');
+  return decision.value;
 }

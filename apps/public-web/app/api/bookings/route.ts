@@ -1,6 +1,6 @@
 import { getSessionAccount } from '@/lib/auth';
 import { createBooking, listBookings } from '@/lib/bookings';
-import { getCatalog } from '@/lib/catalog';
+import { getCatalog } from '@/lib/catalog-source';
 import {
   FORBIDDEN_CROSS_SITE,
   MALFORMED_BODY,

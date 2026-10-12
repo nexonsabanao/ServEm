@@ -4,6 +4,7 @@ import { ChatIcon, ChevronRightIcon } from '@/app/components/icons';
 import { getSessionAccount } from '@/lib/auth';
 import { listConversations } from '@/lib/conversations';
 import { formatDayShort } from '@/lib/format';
+import { BOOKING_STATUS_LABELS } from '@/lib/presentation';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,7 +49,7 @@ export default async function MessagesPage() {
                     <span className="conversation-service">{conversation.serviceTitle}</span>
                     <span className="conversation-last-message">You: {conversation.lastMessage}</span>
                     <span className="conversation-reference">
-                      {conversation.reference} · {conversation.status === 'requested' ? 'Request open' : 'Withdrawn'}
+                      {conversation.reference} · {BOOKING_STATUS_LABELS[conversation.status]}
                     </span>
                   </span>
                   <span className="conversation-arrow" aria-hidden="true"><ChevronRightIcon /></span>

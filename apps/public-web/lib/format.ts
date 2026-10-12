@@ -17,6 +17,17 @@ export function formatRate(startingPriceCentavos?: number): string {
   return `From ${formatPhp(startingPriceCentavos)}`;
 }
 
+/**
+ * A listing's starting amount, or the honest answer for a quote-only listing.
+ *
+ * A ServMate may publish a listing with no fixed price (`pricingModel: 'quote'`),
+ * so every surface that shows a price goes through here rather than printing
+ * `₱NaN` or implying a number that was never set.
+ */
+export function formatFromPrice(startingPriceCentavos?: number): string {
+  return startingPriceCentavos === undefined ? 'Ask for a quote' : formatPhp(startingPriceCentavos);
+}
+
 /** `5` → `~5 min`, `90` → `~1.5 hr`. Used wherever a reply time is shown. */
 export function formatReplies(mins: number): string {
   if (mins < 60) return `~${mins} min`;

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { BookmarkIcon, LocationIcon, SearchIcon } from '@/app/components/icons';
 import { BookingModal } from './booking-modal';
 import { ServiceCard } from './service-card';
-import { SERVICE_AREAS, feedServices, providerById, type FeedService } from '@/lib/feed-data';
+import { SERVICE_AREAS, type FeedService } from '@/lib/feed-data';
 import { SORT_OPTIONS, type SortPreference } from '@/lib/preferences';
 
 const SAVED_SERVICES_KEY = 'servem:saved-services';
@@ -25,10 +25,17 @@ type Sort = SortPreference;
  * discounts or sales figures: every figure on a card comes from the listing.
  */
 export function EcommerceHome({
+  listings,
   initialQuery = '',
   initialArea = 'All',
   initialSort = 'fastest',
 }: {
+  /**
+   * Every published listing, read from the store on the server and handed down.
+   * The filtering, sorting and counts below are the same work the component
+   * always did — it just no longer owns the data.
+   */
+  listings: FeedService[];
   initialQuery?: string;
   /** The account's saved default area, from Settings. */
   initialArea?: string;
@@ -52,7 +59,7 @@ export function EcommerceHome({
   useEffect(() => {
     try {
       const stored: unknown = JSON.parse(window.localStorage.getItem(SAVED_SERVICES_KEY) ?? '[]');
-      const validIds = new Set(feedServices.map((service) => service.id));
+      const validIds = new Set(listings.map((service) => service.id));
       if (Array.isArray(stored)) {
         setSaved(stored.filter((id): id is string => typeof id === 'string' && validIds.has(id)));
       }
@@ -61,7 +68,7 @@ export function EcommerceHome({
     } finally {
       setSavedReady(true);
     }
-  }, []);
+  }, [listings]);
 
   useEffect(() => {
     if (!savedReady) return;
@@ -74,14 +81,13 @@ export function EcommerceHome({
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const matches = feedServices.filter((service) => {
-      const provider = providerById.get(service.providerId);
+    const matches = listings.filter((service) => {
       const matchesQuery =
         !q ||
         service.title.toLowerCase().includes(q) ||
         service.category.toLowerCase().includes(q) ||
         service.area.toLowerCase().includes(q) ||
-        (provider?.name.toLowerCase().includes(q) ?? false);
+        service.provider.name.toLowerCase().includes(q);
       const matchesCategory = category === 'All' || service.category === category;
       const matchesArea = area === 'All' || service.area === area;
       const matchesSaved = !savedOnly || saved.includes(service.id);
@@ -92,22 +98,21 @@ export function EcommerceHome({
       case 'fastest':
         sorted.sort(
           (a, b) =>
-            (providerById.get(a.providerId)?.responseMins ?? Infinity) -
-            (providerById.get(b.providerId)?.responseMins ?? Infinity),
+            (a.provider.responseMins || Infinity) - (b.provider.responseMins || Infinity),
         );
         break;
       case 'rating':
         sorted.sort((a, b) => b.rating - a.rating);
         break;
       case 'price-low':
-        sorted.sort((a, b) => a.startingPriceCentavos - b.startingPriceCentavos);
+        sorted.sort((a, b) => (a.startingPriceCentavos ?? Infinity) - (b.startingPriceCentavos ?? Infinity));
         break;
       case 'price-high':
-        sorted.sort((a, b) => b.startingPriceCentavos - a.startingPriceCentavos);
+        sorted.sort((a, b) => (b.startingPriceCentavos ?? -Infinity) - (a.startingPriceCentavos ?? -Infinity));
         break;
     }
     return sorted;
-  }, [query, category, area, savedOnly, saved, sort]);
+  }, [listings, query, category, area, savedOnly, saved, sort]);
 
   const filtered = Boolean(query.trim() || category !== 'All' || area !== 'All' || savedOnly);
 
@@ -124,7 +129,7 @@ export function EcommerceHome({
   }
 
   function countIn(nextCategory: string, nextArea: string) {
-    return feedServices.filter(
+    return listings.filter(
       (service) =>
         (nextCategory === 'All' || service.category === nextCategory) &&
         (nextArea === 'All' || service.area === nextArea),

@@ -68,10 +68,44 @@ Leave the variables unset to keep social sign-in off; the dialog then explains w
 variable each provider needs. Use a separate development client for localhost rather than
 reusing the production one.
 
-**Store:** accounts, sessions and bookings live in `.data/servem.json` (gitignored). That
-file is a local stand-in for the blueprint's NestJS + PostgreSQL backend. It is
-single-process, unencrypted, and unsuitable for production or multiple instances. Delete
-`.data/` to reset. Do not store real credentials or personal data in it.
+## Store
+
+Everything the site persists lives in `.data/servem.json` (gitignored): accounts, sessions,
+ServMate profiles, their categories and coverage areas, service listings, job posts and their
+media, offers, bookings with their status history, conversations and messages, media metadata,
+reviews, notifications, blocks and reports. The file is a local stand-in for the blueprint's
+NestJS + PostgreSQL backend — single-process, unencrypted, and unsuitable for production or
+multiple instances. Do not store real credentials or personal data in it.
+
+Three properties are worth knowing before you rely on it:
+
+- **Demo content is seeded, not hardcoded.** On the first read of a store at an older seed
+  revision, `lib/seed.ts` folds in demo ServMates, categories, coverage areas, listings and the
+  completed bookings their reviews hang off. The cards on the storefront and the profiles on a
+  ServMate page are those rows, which is what makes the marketplace demonstrable end to end.
+  Seeding is additive and idempotent: your own rows and edits are never overwritten.
+- **A read never writes.** Seeding happens in memory, so a page render cannot modify the file.
+  The seeded rows are persisted the first time something real is written — a sign-up, a request,
+  or a transition.
+- **Production does not seed.** With `NODE_ENV=production` the demo rows are skipped and an
+  unconfigured catalog shows the unavailable state rather than sample ServMates, matching the
+  rule the public catalog has always applied. `SERVEM_SEED=1` forces seeding on, `SERVEM_SEED=0`
+  off, and `SERVEM_DATA_DIR` points the store at another directory — the test suite uses that so
+  it can never touch a development file.
+
+Delete `.data/` to reset.
+
+## Tests
+
+```
+npm test
+```
+
+Runs the Node test runner over `test/*.test.ts`. This needs Node 22.18+ (or 24+), which strips
+TypeScript types natively — the application itself still supports the Node 20.9+ its
+`engines` field declares. No test dependency is installed for it, deliberately: the project has
+not chosen a package manager or committed a lockfile yet (decision D-004 in
+`../../sidehustle_marketplace_blueprint_v3/docs/DECISION_REGISTER.md`).
 
 
 To connect the public catalog, copy `.env.example` to `.env.local` and replace the placeholder with the API root ending in `/api/v1`. The website only calls `GET /services`, with a 20-item limit. No API secret belongs in the browser or this file.
@@ -79,7 +113,7 @@ To connect the public catalog, copy `.env.example` to `.env.local` and replace t
 ## Current scope and blueprint gates
 
 - Search, pricing filters, sorting, refresh, service summaries, FAQ disclosures, mobile navigation, and service details are interactive.
-- Sign in, sign up, sign out and booking requests are implemented against the local store described above. Design-preview listings remain synthetic samples.
+- Sign in, sign up, sign out and booking requests are implemented against the local store described above. The listings and ServMate profiles the interface shows are seeded demo records rather than a hardcoded array, but they are still samples: no row represents a real provider, and the storefront keeps its "Design preview" label.
 - The current OpenAPI starter does not define service details, categories, provider public profiles, or the rest of the account/help/policy flows. The interface does not invent those data or permissions.
 - Google and Apple sign-in are implemented as described above; both require credentials that are not in this repository, so neither can be exercised without them.
 - Email verification, password reset, rate limiting, account linking from an existing password account into the dialog, age/category eligibility, booking terms, and deletion policies remain open decisions. No payment, payout, or provider-side action exists yet.

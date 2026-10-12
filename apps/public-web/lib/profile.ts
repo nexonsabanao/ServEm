@@ -1,4 +1,5 @@
-import { CATEGORY_TONE, SERVICE_AREAS, type Gradient } from './feed-data';
+import { listCategories } from './categories';
+import { NEUTRAL_TONE, SERVICE_AREAS, toneForCategory, type Gradient } from './presentation';
 
 /**
  * The signed-in customer's own profile.
@@ -32,10 +33,19 @@ export const DEFAULT_PROFILE: CustomerProfile = { area: '', about: '', tone: 'in
  * Avatar tones, drawn from the same slate family the catalog uses so a customer
  * avatar sits in the same palette as a ServMate's. `ink` is the default and
  * matches the letter avatars already used across the account area.
+ *
+ * Keyed by category display name, because a tone key is stored on the profile
+ * and a person picks it by the category it looks like.
  */
+function categoryTones(): Record<string, Gradient> {
+  const tones: Record<string, Gradient> = {};
+  for (const category of listCategories()) tones[category.name] = toneForCategory(category.id);
+  return tones;
+}
+
 export const TONE_SWATCHES: Record<string, Gradient> = {
-  ink: { from: '#4a4a4a', to: '#52667b', angle: 135 },
-  ...CATEGORY_TONE,
+  ink: NEUTRAL_TONE,
+  ...categoryTones(),
 };
 
 export const TONE_KEYS: string[] = Object.keys(TONE_SWATCHES);

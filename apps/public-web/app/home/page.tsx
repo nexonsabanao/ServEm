@@ -3,6 +3,7 @@ import { AppShell } from '@/app/components/feed/app-shell';
 import { EcommerceHome } from '@/app/components/feed/ecommerce-home';
 import { getSessionAccount, getSessionPreferences } from '@/lib/auth';
 import { listBookings, summariseBookings } from '@/lib/bookings';
+import { listFeedServices } from '@/lib/servmate-profile';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,15 +25,17 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
 
   const params = await searchParams;
   const q = firstValue(params.q).slice(0, 80);
-  const [bookings, preferences] = await Promise.all([
+  const [bookings, preferences, listings] = await Promise.all([
     listBookings(account.id),
     getSessionPreferences(),
+    listFeedServices(),
   ]);
   const summary = summariseBookings(bookings);
 
   return (
     <AppShell account={account} requestCount={summary.total} searchQuery={q}>
       <EcommerceHome
+        listings={listings}
         initialQuery={q}
         initialArea={preferences.defaultArea}
         initialSort={preferences.defaultSort}

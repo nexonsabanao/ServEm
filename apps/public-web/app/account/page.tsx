@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { WorkDocket } from '@/app/components/work-order';
 import { getSessionProfile } from '@/lib/auth';
 import { listBookings, summariseBookings } from '@/lib/bookings';
-import { getCatalog } from '@/lib/catalog';
+import { getCatalog } from '@/lib/catalog-source';
 import { formatDay, formatDayShort, formatRate } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';

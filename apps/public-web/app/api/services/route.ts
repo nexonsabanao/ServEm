@@ -1,4 +1,4 @@
-import { getCatalog } from '@/lib/catalog';
+import { getCatalog } from '@/lib/catalog-source';
 
 export const dynamic = 'force-dynamic';
 

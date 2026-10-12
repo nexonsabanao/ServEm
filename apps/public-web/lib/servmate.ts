@@ -1,177 +1,193 @@
-import {
-  feedServices,
-  providers,
-  providerById,
-  SERVICE_AREAS,
-  type FeedService,
-  type Provider,
-} from './feed-data';
 import type { Booking } from './bookings';
+import type { FeedService, Provider } from './feed-data';
+import { SERVICE_AREAS } from './presentation';
+import type { BookingStatus } from './store';
 
 /**
- * The ServMate (provider) side of the marketplace.
+ * The ServMate side of the marketplace — presentation and preview state only.
  *
- * Everything here is a *view model over sample data*: the roster in
- * `feed-data` stands in for provider records, and listings map to a provider by
- * `providerId` because the starter OpenAPI contract has no provider or booking
- * association yet. It is pure and import-safe on both the server and the
- * client — no store, no `node:` modules.
+ * Everything here is **pure** and safe on both the server and the client: it
+ * takes providers, listings and bookings as arguments and returns view models.
+ * The rows themselves come from `./servmate-profile`, which reaches the
+ * datastore and stays on the server, so a client component can import this
+ * module without dragging `node:fs` into the bundle.
  *
- * Two boundaries this module deliberately respects:
+ * Two boundaries this module still respects:
  *
  * 1. It never invents a provider identity for an account. Which account is
- *    eligible to act as a ServMate is an open decision in the blueprint
- *    (provider verification and the customer/provider role switch), so the
- *    workbench previews the roster rather than claiming the signed-in account
- *    is one of them.
+ *    eligible to act as a ServMate is decided by `isServMate` on the account and
+ *    the profile it owns, so the `?as=` parameter previews a roster entry rather
+ *    than claiming the signed-in account is one of them.
  * 2. It never invents money. Payouts are gated behind the payment-provider and
- *    launch-gate decisions, so the workbench reports a status instead of a
- *    balance.
+ *    launch-gate decisions, so the workbench reports a status, not a balance.
  */
 
-export type ServmateRosterEntry = Pick<
+/* ------------------------------------------------------------------ *
+ * The workbench's presentation rows.
+ *
+ * The workbench is a client component, so every date and money string is
+ * formatted on the server and passed in as plain text. That keeps one time
+ * zone in charge of the output and makes server and client render identical
+ * markup.
+ * ------------------------------------------------------------------ */
+
+export type WorkbenchProvider = Pick<
   Provider,
   'id' | 'name' | 'handle' | 'verified' | 'rating' | 'reviews' | 'responseMins' | 'area' | 'headline'
 >;
 
-/** The sample ServMates the workbench can preview, in roster order. */
-export function servmateRoster(): ServmateRosterEntry[] {
-  return providers.map(({ id, name, handle, verified, rating, reviews, responseMins, area, headline }) => ({
-    id,
-    name,
-    handle,
-    verified,
-    rating,
-    reviews,
-    responseMins,
-    area,
-    headline,
+export type WorkbenchChoice = {
+  id: string;
+  name: string;
+  area: string;
+  verified: boolean;
+};
+
+export type WorkbenchRequest = {
+  id: string;
+  reference: string;
+  serviceTitle: string;
+  category: string;
+  area?: string;
+  message: string;
+  /**
+   * `requested` is still waiting on the ServMate; anything else is settled —
+   * withdrawn by the customer, or already booked into a job.
+   */
+  status: BookingStatus;
+  receivedLabel: string;
+};
+
+export type WorkbenchListing = {
+  id: string;
+  title: string;
+  category: string;
+  area: string;
+  fromLabel: string;
+  availability: string;
+  repliesLabel: string;
+};
+
+export type WorkbenchStanding = {
+  waitingLabel: string;
+  listingsLabel: string;
+  fromLabel: string;
+  repliesLabel: string;
+};
+
+export type WorkbenchData = {
+  provider: WorkbenchProvider;
+  roster: WorkbenchChoice[];
+  requests: WorkbenchRequest[];
+  listings: WorkbenchListing[];
+  standing: WorkbenchStanding;
+};
+
+/** The roster choices the workbench switches between, by name. */
+export function providerChoices(providers: Provider[]): WorkbenchChoice[] {
+  return providers.map((provider) => ({
+    id: provider.id,
+    name: provider.name,
+    area: provider.area,
+    verified: provider.verified,
   }));
 }
 
-export const SERVEMATE_IDS = providers.map((provider) => provider.id);
-
-export function isServmateId(value: string): boolean {
-  return SERVEMATE_IDS.includes(value);
-}
-
-export function getServmate(id: string): ServmateRosterEntry | undefined {
-  const provider = providerById.get(id);
-  if (!provider) return undefined;
-  return servmateRoster().find((entry) => entry.id === provider.id);
-}
-
-/** Every listing that belongs to this ServMate, cheapest first. */
-export function servicesFor(providerId: string): FeedService[] {
-  return feedServices
-    .filter((service) => service.providerId === providerId)
-    .sort((a, b) => a.startingPriceCentavos - b.startingPriceCentavos);
-}
-
-/** The categories a ServMate currently works in, in roster order of the listings. */
-export function categoriesFor(providerId: string): string[] {
-  return Array.from(new Set(servicesFor(providerId).map((service) => service.category)));
-}
-
-/** The ServMate who offers a listing, if the sample catalog knows it. */
-export function providerIdForService(serviceId: string): string | undefined {
-  return feedServices.find((service) => service.id === serviceId)?.providerId;
-}
-
-export function categoryForService(serviceId: string): string {
-  return feedServices.find((service) => service.id === serviceId)?.category ?? 'Service';
+/** Every listing that belongs to this ServMate, as the card model. */
+export function listingsFor(providerId: string, listings: FeedService[]): FeedService[] {
+  return listings.filter((listing) => listing.providerId === providerId);
 }
 
 /**
- * Which ServMate to open the workbench on: the one with the most recent open
- * request on this account, so the queue is not empty when there is something
- * real to show. Falls back to the first roster entry.
+ * The category a listing belongs to, for a booking made against it.
+ *
+ * A request that predates the listing's category change still shows the
+ * category the customer actually booked from, so the queue never reinterprets
+ * history.
  */
-export function defaultServmateId(bookings: Booking[]): string {
-  const newestOpen = [...bookings]
-    .filter((booking) => booking.status === 'requested')
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-  const owner = newestOpen ? providerIdForService(newestOpen.serviceId) : undefined;
-  return owner ?? SERVEMATE_IDS[0] ?? '';
+export function categoryForListing(listingId: string, listings: FeedService[]): string {
+  return listings.find((listing) => listing.id === listingId)?.category ?? 'Service';
 }
 
 /**
  * Requests aimed at this ServMate's listings.
  *
- * These are the account's *own* requests, viewed from the other side of the
- * counter — the demand side of a single-account local store. A provider must
- * see every customer's request for their listings, so a real deployment scopes
- * this on the provider/booking association the contract does not define yet;
- * scoping it to the session's account keeps this design preview from exposing
- * another account's data.
+ * Oldest first: the customer who has been waiting longest is the next one up.
  */
-export function incomingFor(providerId: string, bookings: Booking[]): Booking[] {
-  const owned = new Set(servicesFor(providerId).map((service) => service.id));
-  // Oldest first: the customer who has been waiting longest is the next one up.
+export function incomingFor(
+  providerId: string,
+  listings: FeedService[],
+  bookings: Booking[],
+): Booking[] {
+  const owned = new Set(listingsFor(providerId, listings).map((listing) => listing.id));
   return bookings
     .filter((booking) => owned.has(booking.serviceId))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
-export type ServmateQueue = {
-  /** Open requests still waiting on a decision from this ServMate. */
-  waiting: Booking[];
-  /** Requests the customer withdrew before a decision was made. */
-  withdrawn: Booking[];
-};
+/** Open requests across every listing — the provider's standing total. */
+export function waitingCount(listings: FeedService[], bookings: Booking[]): number {
+  const owned = new Set(listings.map((listing) => listing.id));
+  return bookings.filter(
+    (booking) => owned.has(booking.serviceId) && booking.status === 'requested',
+  ).length;
+}
 
-export function splitQueue(bookings: Booking[]): ServmateQueue {
-  return {
-    waiting: bookings.filter((booking) => booking.status === 'requested'),
-    withdrawn: bookings.filter((booking) => booking.status === 'cancelled'),
-  };
+/**
+ * Which ServMate to open the workbench on: the one whose listing carries the
+ * most recent open request, so the queue is not empty when there is something
+ * real to show. Falls back to the first roster entry.
+ */
+export function defaultProviderId(
+  providers: Provider[],
+  listings: FeedService[],
+  bookings: Booking[],
+): string {
+  const newestOpen = [...bookings]
+    .filter((booking) => booking.status === 'requested')
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  const owner = newestOpen
+    ? listings.find((listing) => listing.id === newestOpen.serviceId)?.providerId
+    : undefined;
+  return owner ?? providers[0]?.id ?? '';
 }
 
 export type ServmateStanding = {
-  /** Open requests across the whole account, so the preview shows the real total. */
+  /** Open requests across the whole account, so the panel shows the real total. */
   waiting: number;
   liveListings: number;
   fromCentavos?: number;
-  /** Provider reply time target, straight from the roster record. */
   responseMins: number;
-  rating: number;
-  reviews: number;
 };
 
-export function standingFor(providerId: string, bookings: Booking[]): ServmateStanding {
-  const services = servicesFor(providerId);
-  const from = services[0]?.startingPriceCentavos;
-  const provider = providerById.get(providerId);
-
+export function standingFor(
+  provider: Provider,
+  listings: FeedService[],
+  waiting: number,
+): ServmateStanding {
+  const prices = listings
+    .map((listing) => listing.startingPriceCentavos)
+    .filter((price): price is number => price !== undefined);
   return {
-    waiting: splitQueue(incomingFor(providerId, bookings)).waiting.length,
-    liveListings: services.length,
-    ...(from === undefined ? {} : { fromCentavos: from }),
-    responseMins: provider?.responseMins ?? 0,
-    rating: provider?.rating ?? 0,
-    reviews: provider?.reviews ?? 0,
+    waiting,
+    liveListings: listings.length,
+    ...(prices.length === 0 ? {} : { fromCentavos: Math.min(...prices) }),
+    responseMins: provider.responseMins,
   };
 }
 
-/**
- * The decision a ServMate has made on a request.
+/* ------------------------------------------------------------------ *
+ * Device-held preview state.
  *
- * Held on the device, not in the store: there is no provider-side API, and
+ * Accept and Decline decisions are held on the device, not in the store:
  * writing a booking status the contract does not define would be inventing a
- * state machine the blueprint says must be agreed first.
- */
+ * state machine the blueprint says must be agreed first. A ServMate's profile
+ * edits are different — those now have a real home on the account — so the
+ * draft overlay is only used to preview a roster entry that is not yours.
+ * ------------------------------------------------------------------ */
+
 export type ServmateDecision = 'accepted' | 'declined';
 
-/**
- * A ServMate's own edits to their public profile.
- *
- * Held on the device rather than in the store, for the same reason as the
- * decisions below: which account may act as a ServMate is an open blueprint
- * decision, so writing profile text into a shared record would be claiming an
- * identity the platform has not granted. The draft overlays the roster entry
- * wherever this person looks, and disappears with the device's other preview
- * state.
- */
 export type ServmateProfileDraft = {
   /** The italic line under the name. Empty falls back to the roster's. */
   headline: string;
@@ -202,48 +218,6 @@ export const SERVEMATE_PREVIEW_KEY = 'servem:servmate-preview';
 
 export function emptyPreviewState(): ServmatePreviewState {
   return { decisions: {}, accepting: true, profiles: {} };
-}
-
-/**
- * The public profile a customer would see for this ServMate.
- *
- * The draft is laid over the roster record field by field, so an untouched
- * draft is invisible: the sample data comes through exactly as published.
- */
-export type ServmateProfileView = {
-  name: string;
-  handle: string;
-  verified: boolean;
-  area: string;
-  headline: string;
-  about: string;
-  areas: string[];
-  rating: number;
-  reviews: number;
-  responseMins: number;
-};
-
-export function profileViewFor(
-  providerId: string,
-  draft: ServmateProfileDraft | undefined,
-): ServmateProfileView | undefined {
-  const provider = providerById.get(providerId);
-  if (!provider) return undefined;
-  const services = servicesFor(providerId);
-  const rosterAreas = Array.from(new Set([provider.area, ...services.map((service) => service.area)]));
-  const areas = draft?.areas && draft.areas.length > 0 ? draft.areas : rosterAreas;
-  return {
-    name: provider.name,
-    handle: provider.handle,
-    verified: provider.verified,
-    area: provider.area,
-    headline: draft?.headline.trim() || provider.headline,
-    about: draft?.about.trim() || '',
-    areas,
-    rating: provider.rating,
-    reviews: provider.reviews,
-    responseMins: provider.responseMins,
-  };
 }
 
 /** Validates a draft patch, returning the accepted fields or field errors. */
@@ -283,61 +257,6 @@ export function readDraftPatch(
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   return { ok: true, patch };
 }
-
-/* ------------------------------------------------------------------ *
- * Presentation rows.
- *
- * The workbench is a client component, so every date and money string is
- * formatted on the server and passed in as plain text. That keeps one time
- * zone in charge of the output and makes server and client render identical
- * markup.
- * ------------------------------------------------------------------ */
-
-export type WorkbenchProvider = ServmateRosterEntry;
-
-export type WorkbenchChoice = {
-  id: string;
-  name: string;
-  area: string;
-  verified: boolean;
-};
-
-export type WorkbenchRequest = {
-  id: string;
-  reference: string;
-  serviceTitle: string;
-  category: string;
-  area?: string;
-  message: string;
-  /** `requested` is still waiting on the ServMate; `cancelled` was withdrawn. */
-  status: 'requested' | 'cancelled';
-  receivedLabel: string;
-};
-
-export type WorkbenchListing = {
-  id: string;
-  title: string;
-  category: string;
-  area: string;
-  fromLabel: string;
-  turnaround: string;
-  repliesLabel: string;
-};
-
-export type WorkbenchStanding = {
-  waitingLabel: string;
-  listingsLabel: string;
-  fromLabel: string;
-  repliesLabel: string;
-};
-
-export type WorkbenchData = {
-  provider: WorkbenchProvider;
-  roster: WorkbenchChoice[];
-  requests: WorkbenchRequest[];
-  listings: WorkbenchListing[];
-  standing: WorkbenchStanding;
-};
 
 /** Reads persisted preview decisions, dropping anything malformed. */
 export function parsePreviewState(raw: unknown): ServmatePreviewState {

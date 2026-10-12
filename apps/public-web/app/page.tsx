@@ -1,6 +1,7 @@
 import { Marketplace } from '@/app/components/marketplace';
 import { getSessionAccount } from '@/lib/auth';
-import { CATEGORY_ORDER, getCatalog } from '@/lib/catalog';
+import { CATEGORY_ORDER } from '@/lib/catalog';
+import { getCatalog } from '@/lib/catalog-source';
 import { authErrorNotice, signedInNotice } from '@/lib/oauth-messages';
 
 type SearchParams = Promise<{

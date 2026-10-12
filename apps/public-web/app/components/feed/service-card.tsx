@@ -2,12 +2,8 @@
 
 import Link from 'next/link';
 import { BookmarkIcon, LocationIcon, StarIcon } from '@/app/components/icons';
-import {
-  gradientStyle,
-  providerById,
-  type FeedService,
-} from '@/lib/feed-data';
-import { formatPhp, formatReplies } from '@/lib/format';
+import { gradientStyle, type FeedService } from '@/lib/feed-data';
+import { formatFromPrice, formatReplies } from '@/lib/format';
 
 /** The glyph drawn on a service thumbnail so it is not a bare gradient. */
 export function ServiceGlyph({ kind }: { kind: FeedService['glyph'] }) {
@@ -93,8 +89,8 @@ export function ServiceCard({
   saved: boolean;
   onToggleSave: (id: string) => void;
 }) {
-  const provider = providerById.get(service.providerId);
-  const replies = provider ? formatReplies(provider.responseMins) : null;
+  const provider = service.provider;
+  const replies = provider.responseMins > 0 ? formatReplies(provider.responseMins) : null;
 
   return (
     <article className="svc-card">
@@ -134,7 +130,7 @@ export function ServiceCard({
           <div className="svc-ledger-from">
             <dt>From</dt>
             <span className="svc-leader" />
-            <dd className="svc-price">{formatPhp(service.startingPriceCentavos)}</dd>
+            <dd className="svc-price">{formatFromPrice(service.startingPriceCentavos)}</dd>
           </div>
         </dl>
       </div>
