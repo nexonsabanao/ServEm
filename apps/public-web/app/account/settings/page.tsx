@@ -1,12 +1,20 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { DeviceDataPanel } from '@/app/components/settings/device-data';
-import { PreferencesForm } from '@/app/components/settings/preferences-form';
-import { OtherDevicesPanel, PasswordForm } from '@/app/components/settings/security-forms';
+import {
+  BagIcon,
+  BellIcon,
+  DeviceIcon,
+  DocketIcon,
+  FlagIcon,
+  LockIcon,
+  ShieldIcon,
+  UserIcon,
+} from '@/app/components/icons';
+import { SettingsGroup, SettingsRow } from '@/app/components/settings/settings-screen';
 import { getPreferences } from '@/lib/account';
 import { getSessionProfile } from '@/lib/auth';
-import { formatDay } from '@/lib/format';
-import { MESSAGE_MAX } from '@/lib/validation';
+import { formatMonth } from '@/lib/format';
+import { getOwnServmateProfile } from '@/lib/servmate-profile';
+import { listBlockedAccounts, listOwnReports } from '@/lib/trust';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,175 +23,125 @@ export const metadata = {
 };
 
 /**
- * Account settings.
+ * Settings: a list of what you can change, each one showing what it is set to.
  *
- * Organised by what a person is trying to change, not by how the system is
- * built. Where a setting depends on a decision the blueprint has not made —
- * changing an email, deleting an account, moving money — the row says so and
- * offers no control, rather than a button that does nothing.
+ * The old screen was one long scroll that explained the whole system in prose.
+ * This is the opposite: your name, email and join date appear here and nowhere
+ * else, and every row is a door — the label says what it is, the value says what
+ * it currently is, and the chevron says opening it is a screen, not a guess.
  */
 export default async function SettingsPage() {
   const profile = await getSessionProfile();
   if (!profile) redirect('/?signin=1');
 
-  const preferences = await getPreferences(profile.id);
+  const [preferences, blocked, reports, servmate] = await Promise.all([
+    getPreferences(profile.id),
+    listBlockedAccounts(profile.id),
+    listOwnReports(profile.id),
+    getOwnServmateProfile(profile.id),
+  ]);
+
+  const signIn = [
+    profile.hasPassword ? 'Password' : null,
+    ...profile.identities.map((identity) => providerLabel(identity.provider)),
+  ].filter((method): method is string => Boolean(method));
+
+  const switches = [
+    preferences.notifyReplies,
+    preferences.notifyRequestUpdates,
+    preferences.notifyProductNews,
+    preferences.reduceMotion,
+    preferences.largerText,
+  ];
+  const on = switches.filter(Boolean).length;
 
   return (
-    <div className="account-page">
-      <PreferencesForm initial={preferences} />
+    <div className="screen">
+      <h1 className="screen-title">Settings</h1>
 
-      <section className="account-section" aria-labelledby="set-security">
-        <div className="account-section-head">
-          <h2 id="set-security">Security</h2>
-        </div>
-        <PasswordForm hasPassword={profile.hasPassword} />
-        <div className="set-rows">
-          <div className="set-row">
-            <div className="set-row-copy">
-              <span className="set-row-label">Other devices</span>
-              <span className="set-row-note">
-                Ends every session for this account except the browser you are using now.
-              </span>
-            </div>
-            <div className="set-row-control">
-              <OtherDevicesPanel />
-            </div>
-          </div>
-          <div className="set-row">
-            <div className="set-row-copy">
-              <span className="set-row-label">Two-factor authentication</span>
-              <span className="set-row-note">
-                Waiting on the identity-provider decision. Until then, sign-in is a password or a
-                Google/Apple account.
-              </span>
-            </div>
-            <div className="set-row-control">
-              <span className="set-gate">Not enabled</span>
-            </div>
-          </div>
-          <div className="set-row">
-            <div className="set-row-copy">
-              <span className="set-row-label">Sign-in activity</span>
-              <span className="set-row-note">
-                Sessions are stored with an expiry but no device list, so there is nothing honest to
-                show here yet.
-              </span>
-            </div>
-            <div className="set-row-control">
-              <span className="set-gate">Not recorded</span>
-            </div>
-          </div>
+      <section className="me-card" aria-label="Account summary">
+        <span className="me-avatar" aria-hidden="true">{initialFor(profile.name)}</span>
+        <div className="me-copy">
+          <p className="me-name">{profile.name}</p>
+          <p className="me-line">{profile.email}</p>
+          <p className="me-since">Member since {formatMonth(profile.createdAt)}</p>
         </div>
       </section>
 
-      <section className="account-section" aria-labelledby="set-privacy">
-        <div className="account-section-head">
-          <h2 id="set-privacy">Privacy and data</h2>
-        </div>
-        <div className="set-rows">
-          <div className="set-row">
-            <div className="set-row-copy">
-              <span className="set-row-label">What ServEm stores about you</span>
-              <span className="set-row-note">
-                Your name, email, a scrypt password hash (or your Google/Apple link), your
-                preferences, the requests you send with their messages, and a sign-in cookie. No
-                card details, no precise location, no address book.
-              </span>
-            </div>
-          </div>
-          <div className="set-row">
-            <div className="set-row-copy">
-              <span className="set-row-label">What ServMates see</span>
-              <span className="set-row-note">
-                The service, area and message on a request, plus the name on this account. Message
-                text is capped at {MESSAGE_MAX.toLocaleString('en-PH')} characters.
-              </span>
-            </div>
-          </div>
-          <div className="set-row">
-            <div className="set-row-copy">
-              <span className="set-row-label">Download your data</span>
-              <span className="set-row-note">
-                A JSON file with your account details, preferences, requests and messages.
-              </span>
-            </div>
-            <div className="set-row-control">
-              <a className="set-secondary" href="/api/account/export" download>
-                Download my data
-              </a>
-            </div>
-          </div>
-          <div className="set-row">
-            <div className="set-row-copy">
-              <span className="set-row-label">Delete this account</span>
-              <span className="set-row-note">
-                Retention and deletion rules are an open blueprint decision covering live bookings
-                and any settlement records, so deletion is not switched on. Ask support to remove an
-                account in the meantime.
-              </span>
-            </div>
-            <div className="set-row-control">
-              <span className="set-gate">Not enabled</span>
-            </div>
-          </div>
-          <div className="set-row">
-            <div className="set-row-copy">
-              <span className="set-row-label">Terms and conditions</span>
-              <span className="set-row-note">
-                The agreement between you and ServEm: booking rules, payment, privacy and how
-                complaints are handled.
-              </span>
-            </div>
-            <div className="set-row-control">
-              <Link className="set-secondary" href="/terms">Read the terms</Link>
-            </div>
-          </div>
-          <div className="set-row">
-            <div className="set-row-copy">
-              <span className="set-row-label">This account</span>
-              <span className="set-row-note">
-                Created {formatDay(profile.createdAt)} · {profile.email}
-              </span>
-            </div>
-            <div className="set-row-control">
-              <Link className="quiet-button" href="/account/profile">Profile and sign-in</Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      <SettingsGroup title="Your account">
+        <SettingsRow
+          href="/account/profile"
+          label="Profile"
+          value={profile.profile.area ? `Area: ${profile.profile.area}` : 'Area not set yet'}
+          icon={UserIcon}
+        />
+        <SettingsRow
+          href="/account/settings/security"
+          label="Sign-in and security"
+          value={signIn.length > 0 ? signIn.join(' · ') : 'No method connected'}
+          icon={LockIcon}
+        />
+        <SettingsRow
+          href="/account/settings/notifications"
+          label="Notifications and display"
+          value={`${on} of ${switches.length} switched on`}
+          icon={BellIcon}
+        />
+      </SettingsGroup>
 
-      <section className="account-section" aria-labelledby="set-device">
-        <div className="account-section-head">
-          <h2 id="set-device">This device</h2>
-        </div>
-        <DeviceDataPanel />
-      </section>
+      <SettingsGroup title="Privacy and data">
+        <SettingsRow
+          href="/account/settings/privacy"
+          label="Privacy and your data"
+          value={blocked.length > 0 ? `${blocked.length} blocked` : 'Nobody blocked'}
+          icon={ShieldIcon}
+        />
+        <SettingsRow
+          href="/account/reports"
+          label="Your reports"
+          value={reports.length > 0 ? `${reports.length} sent` : 'None sent'}
+          icon={FlagIcon}
+        />
+      </SettingsGroup>
 
-      <section className="account-section" aria-labelledby="set-servmate">
-        <div className="account-section-head">
-          <h2 id="set-servmate">Selling on ServEm</h2>
-          <span className="preview-tag">Design preview</span>
-        </div>
-        <div className="set-rows">
-          <div className="set-row">
-            <div className="set-row-copy">
-              <span className="set-row-label">ServMate workbench</span>
-              <span className="set-row-note">
-                Availability, incoming requests, listings and rates for a sample ServMate. Provider
-                accounts, verification and payouts are not open to real accounts yet.
-              </span>
-            </div>
-            <div className="set-row-control">
-              <Link className="quiet-button" href="/servmate">Open the workbench</Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      <SettingsGroup title="Selling on ServEm">
+        <SettingsRow
+          href="/servmate"
+          label="ServMate console"
+          value={servmate ? 'Your profile, listings and requests' : 'Not set up yet'}
+          icon={DocketIcon}
+        />
+        <SettingsRow
+          href="/account/settings/selling"
+          label="Verification and payouts"
+          value="Neither connected yet"
+          icon={BagIcon}
+        />
+      </SettingsGroup>
 
-      <p className="account-dev-note">
-        Local development build: accounts, requests and preferences are stored on this machine in a
-        single unencrypted file, not a production datastore.
-      </p>
+      <SettingsGroup title="About">
+        <SettingsRow
+          href="/terms"
+          label="Terms and conditions"
+          value="How bookings and complaints are handled"
+          icon={DocketIcon}
+        />
+        <SettingsRow
+          href="/account/settings/about"
+          label="This device"
+          value="Local development build"
+          icon={DeviceIcon}
+        />
+      </SettingsGroup>
     </div>
   );
+}
+
+function providerLabel(provider: string): string {
+  return provider === 'google' ? 'Google' : provider === 'apple' ? 'Apple' : provider;
+}
+
+function initialFor(value: string): string {
+  const first = Array.from(value.trim())[0];
+  return first ? first.toLocaleUpperCase() : 'S';
 }

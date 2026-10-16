@@ -16,16 +16,18 @@ import { validateName } from '@/lib/validation';
  * immediately, so nothing about the public half is a surprise.
  *
  * Saving posts the whole profile in one call and refreshes the server tree, so
- * the account header, the shell avatar and this page all move together.
+ * the shell's avatar and this page move together.
+ *
+ * The account's address is deliberately not one of its props: an address is
+ * shown in Settings, and a prop the editor never renders would still travel into
+ * this page's payload.
  */
 export function ProfileEditor({
   initialName,
   initialProfile,
-  email,
 }: {
   initialName: string;
   initialProfile: CustomerProfile;
-  email: string;
 }) {
   const router = useRouter();
   const [name, setName] = useState(initialName);

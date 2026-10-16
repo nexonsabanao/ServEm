@@ -25,6 +25,16 @@ export async function POST(
         409,
       );
     }
+    if (result.error === 'invalid_state') {
+      // Finished work ends with confirmation and a review, not a withdrawal.
+      return jsonResponse(
+        {
+          message: 'That request can no longer be withdrawn.',
+          errors: { status: 'This request has already finished.' },
+        },
+        409,
+      );
+    }
     // A request owned by another account is reported the same as a missing one.
     return jsonResponse({ message: 'That request was not found.' }, 404);
   }

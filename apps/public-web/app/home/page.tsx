@@ -11,7 +11,7 @@ export const metadata = {
   title: 'ServEm — Book local services',
 };
 
-type SearchParams = Promise<{ q?: string | string[] }>;
+type SearchParams = Promise<{ q?: string | string[]; service?: string | string[] }>;
 
 /**
  * The signed-in marketplace home. Guarded on the session server-side so a
@@ -25,6 +25,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
 
   const params = await searchParams;
   const q = firstValue(params.q).slice(0, 80);
+  const service = firstValue(params.service).slice(0, 80);
   const [bookings, preferences, listings] = await Promise.all([
     listBookings(account.id),
     getSessionPreferences(),
@@ -33,12 +34,13 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   const summary = summariseBookings(bookings);
 
   return (
-    <AppShell account={account} requestCount={summary.total} searchQuery={q}>
+    <AppShell account={{ name: account.name }} requestCount={summary.total} searchQuery={q}>
       <EcommerceHome
         listings={listings}
         initialQuery={q}
         initialArea={preferences.defaultArea}
         initialSort={preferences.defaultSort}
+        initialService={service}
       />
     </AppShell>
   );

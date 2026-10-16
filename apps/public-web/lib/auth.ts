@@ -1,5 +1,4 @@
-import { randomBytes, randomUUID, scrypt, timingSafeEqual } from 'node:crypto';
-import { promisify } from 'node:util';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { cookies } from 'next/headers';
 import {
   query,
@@ -14,16 +13,15 @@ import { DEFAULT_PREFERENCES, mergePreferences, type AccountPreferences } from '
 import { servMateProfileFor, type Decision } from './policy';
 import { mergeProfile, type CustomerProfile } from './profile';
 
-const derive = promisify(scrypt) as (
-  password: string,
-  salt: string,
-  keyLength: number,
-) => Promise<Buffer>;
+// Credential primitives live in their own module — see `./passwords` for why.
+// Imported for use here and re-exported so callers that reach for an account
+// concern find them.
+import { hashPassword, normaliseEmail, verifyPassword } from './passwords';
+export { hashPassword, normaliseEmail, verifyPassword } from './passwords';
 
 export const SESSION_COOKIE = 'servem_session';
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const PENDING_AUTH_TTL_MS = 1000 * 60 * 10;
-const KEY_LENGTH = 64;
 
 export type Account = {
   id: string;
@@ -33,30 +31,6 @@ export type Account = {
 
 export function toAccount(user: UserRecord): Account {
   return { id: user.id, name: user.name, email: user.email };
-}
-
-export function normaliseEmail(email: string): string {
-  return email.trim().toLowerCase();
-}
-
-export async function hashPassword(password: string): Promise<string> {
-  const salt = randomBytes(16).toString('hex');
-  const derived = await derive(password, salt, KEY_LENGTH);
-  return `scrypt$${salt}$${derived.toString('hex')}`;
-}
-
-export async function verifyPassword(
-  password: string,
-  stored: string | undefined,
-): Promise<boolean> {
-  // Accounts created through an OAuth provider have no password at all.
-  if (!stored) return false;
-  const [scheme, salt, digest] = stored.split('$');
-  if (scheme !== 'scrypt' || !salt || !digest) return false;
-  const expected = Buffer.from(digest, 'hex');
-  if (expected.length !== KEY_LENGTH) return false;
-  const derived = await derive(password, salt, KEY_LENGTH);
-  return timingSafeEqual(derived, expected);
 }
 
 export function sessionCookieOptions() {
@@ -339,12 +313,14 @@ export async function getSessionProfile(): Promise<SessionProfile | null> {
  * unowned booking is indistinguishable from one that does not exist.
  */
 export class AuthError extends Error {
-  constructor(
-    public readonly status: 401 | 403 | 404,
-    message: string,
-  ) {
+  /** The status the refusal becomes. A field rather than a parameter property:
+   *  the test suite runs TypeScript in strip-only mode, which cannot parse one. */
+  readonly status: 401 | 403 | 404;
+
+  constructor(status: 401 | 403 | 404, message: string) {
     super(message);
     this.name = 'AuthError';
+    this.status = status;
   }
 }
 

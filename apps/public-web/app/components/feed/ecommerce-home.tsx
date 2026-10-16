@@ -29,6 +29,7 @@ export function EcommerceHome({
   initialQuery = '',
   initialArea = 'All',
   initialSort = 'fastest',
+  initialService = '',
 }: {
   /**
    * Every published listing, read from the store on the server and handed down.
@@ -41,6 +42,12 @@ export function EcommerceHome({
   initialArea?: string;
   /** The account's saved default sort, from Settings. */
   initialSort?: Sort;
+  /**
+   * A listing to open on arrival, from a link like "Book again". The card's own
+   * sheet is what opens, so the screen is the same one the button on the card
+   * would have produced.
+   */
+  initialService?: string;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
@@ -55,6 +62,12 @@ export function EcommerceHome({
   useEffect(() => {
     setQuery(initialQuery);
   }, [initialQuery]);
+
+  useEffect(() => {
+    if (!initialService) return;
+    const match = listings.find((service) => service.id === initialService);
+    if (match) setBooking(match);
+  }, [initialService, listings]);
 
   useEffect(() => {
     try {
@@ -215,7 +228,7 @@ export function EcommerceHome({
       </section>
 
       <p className="shop-foot">
-        <LocationIcon /> Sample listings for design preview — not real ServMates. Pay only after the job is done.
+        <LocationIcon /> Sample listings for design preview. Pay after the job is done.
       </p>
 
       <BookingModal service={booking} onClose={() => setBooking(null)} onBooked={() => router.refresh()} />

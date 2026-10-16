@@ -59,7 +59,7 @@
 
 /* Account dropdown */
 .app-account { position: relative; }
-.app-account-trigger { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 0 12px; border: 1px solid var(--m-line); border-radius: 10px; background: var(--m-surface); }
+.app-account-trigger { display: inline-flex; align-items: center; min-height: 44px; padding: 0 7px; border: 1px solid var(--m-line); border-radius: 10px; background: var(--m-surface); }
 .app-account-trigger:hover { background: var(--m-surface-2); }
 .app-account-avatar { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--m-ink); color: var(--paper); font-family: var(--display); font-weight: 700; font-size: 15px; }
 .app-account-name { font-size: 13.5px; font-weight: 600; }
@@ -68,7 +68,7 @@
 .app-account-menu { position: absolute; right: 0; top: 50px; z-index: 45; display: grid; gap: 2px; min-width: 232px; padding: 10px; background: var(--m-surface); border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); box-shadow: var(--m-shadow); }
 .app-account-id { display: grid; gap: 2px; padding: 6px 10px 10px; border-bottom: 1px solid var(--m-line); margin-bottom: 6px; }
 .app-account-id strong { font-family: var(--display); font-size: 14px; }
-.app-account-id span { font-size: 12px; color: var(--m-ink-soft); }
+.app-account-id span { font-size: 12px; line-height: 1.45; color: var(--m-ink-soft); }
 .app-account-menu a { display: flex; min-height: 44px; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; font-size: 13.5px; font-weight: 500; }
 .app-account-menu a svg { width: 17px; height: 17px; color: var(--m-accent); }
 .app-account-menu a:hover { background: var(--m-surface-2); }
@@ -76,7 +76,131 @@
 .app-signout { width: 100%; justify-content: center; border-radius: 8px; border-color: var(--m-line); color: var(--m-brand-deep); font-weight: 600; }
 .app-signout:hover { border-color: var(--m-brand); }
 
-.app-shell-body { max-width: 1360px; margin-inline: auto; padding: 22px; }
+/*
+ * The frame: one rail, one column of content. The rail is the navigation, so a
+ * screen never has to carry its own — which is what stops every page from
+ * repeating the same header, the same tabs and the same account card.
+ */
+.app-shell-body {
+  display: grid; grid-template-columns: 246px minmax(0, 1fr); gap: 28px;
+  max-width: 1360px; margin-inline: auto; padding: 22px; align-items: start;
+}
+.app-shell-main { min-width: 0; }
+
+.app-sidebar { position: sticky; top: 84px; display: grid; gap: 8px; align-content: start; }
+.app-sidebar-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.app-sidebar-label {
+  margin: 10px 0 0; padding: 0 12px; color: var(--m-ink-soft);
+  font-family: var(--utility); font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.app-sidebar-link {
+  display: flex; min-height: 44px; align-items: center; gap: 12px; padding: 0 12px;
+  border-radius: var(--m-radius); color: var(--m-ink); font-size: 14px; font-weight: 600;
+  transition: background 140ms ease, color 140ms ease;
+}
+.app-sidebar-link:hover { background: var(--m-surface); }
+.app-sidebar-link[aria-current='page'] { background: var(--m-brand-wash); color: var(--m-brand-deep); }
+.app-sidebar-icon { display: grid; place-items: center; width: 22px; height: 22px; flex: 0 0 22px; color: var(--m-accent); }
+.app-sidebar-link[aria-current='page'] .app-sidebar-icon { color: var(--m-brand-deep); }
+.app-sidebar-icon svg { width: 20px; height: 20px; }
+.app-sidebar-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-sidebar-count {
+  flex: 0 0 auto; min-width: 22px; padding: 2px 6px; border-radius: 999px; background: var(--m-ink); color: var(--paper);
+  font-family: var(--utility); font-size: 10px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums;
+}
+.app-sidebar-foot { display: grid; gap: 6px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--m-line); }
+.app-sidebar-me { display: flex; min-height: 44px; align-items: center; gap: 10px; padding: 6px 10px; border-radius: var(--m-radius); }
+.app-sidebar-me:hover { background: var(--m-surface); }
+.app-sidebar-me-avatar { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; border-radius: 50%; background: var(--m-ink); color: var(--paper); font-family: var(--display); font-size: 15px; font-weight: 700; }
+.app-sidebar-me-name { flex: 1; min-width: 0; overflow: hidden; color: var(--m-ink); font-size: 13.5px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.app-sidebar-me-caret { display: grid; place-items: center; width: 14px; height: 14px; color: var(--m-ink-soft); }
+.app-sidebar-signout {
+  width: 100%; min-height: 40px; justify-content: center; border: 1px solid var(--m-line);
+  border-radius: var(--m-radius); background: transparent; color: var(--m-ink-soft); font-size: 13px; font-weight: 600;
+}
+.app-sidebar-signout:hover { border-color: var(--m-brand); color: var(--m-brand-deep); }
+
+/*
+ * The navigable row: icon, a title, the current value, and a chevron that means
+ * "this opens a screen". Settings, the account overview and search results are
+ * all built from it, so a list of states reads the same everywhere.
+ */
+.row-list {
+  display: grid; overflow: hidden; margin: 0; padding: 0; list-style: none;
+  border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface);
+}
+.row-list > li + li { border-top: 1px solid var(--m-line); }
+.row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center;
+  min-height: 62px; padding: 12px 16px; color: var(--m-ink); text-align: left;
+  transition: background 140ms ease;
+}
+.row-list > li > .row + .row { border-top: 1px solid var(--m-line); }
+.row:hover { background: var(--m-surface-2); }
+.row-icon {
+  display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 38px;
+  border-radius: 10px; background: var(--m-surface-2); color: var(--m-accent);
+}
+.row-icon svg { width: 19px; height: 19px; }
+.row-copy { display: grid; gap: 3px; min-width: 0; }
+.row-title { color: var(--m-ink); font-size: 14px; font-weight: 700; }
+.row-value { overflow: hidden; color: var(--m-ink-soft); font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+.row-chevron { display: grid; place-items: center; width: 18px; height: 18px; color: var(--m-ink-soft); }
+.row-chevron svg { width: 16px; height: 16px; }
+.row-foot { padding: 12px 16px; background: var(--m-surface-2); color: var(--m-ink-soft); font-size: 12px; }
+
+/* The account's own card, shown once — in Settings. */
+.me-card { display: flex; align-items: center; gap: 16px; padding: 18px 20px; border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface); }
+.me-avatar { display: grid; place-items: center; width: 58px; height: 58px; flex: 0 0 58px; border-radius: 50%; background: var(--m-ink); color: var(--paper); font-family: var(--display); font-size: 26px; font-weight: 700; }
+.me-copy { display: grid; gap: 3px; min-width: 0; }
+.me-name { margin: 0; font-family: var(--display); font-size: 21px; font-weight: 600; letter-spacing: -0.02em; }
+.me-line { margin: 0; overflow: hidden; color: var(--m-ink-soft); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.me-since { margin: 0; color: var(--m-ink-soft); font-family: var(--utility); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; }
+
+/*
+ * A screen inside the frame: a back link to where you came from, a title, and
+ * then the content. Every sub-screen uses it, so drilling in and backing out is
+ * the same gesture everywhere.
+ */
+.screen { display: grid; gap: 16px; }
+.screen-back { display: inline-flex; align-items: center; gap: 6px; color: var(--m-ink-soft); font-size: 13px; font-weight: 700; }
+.screen-back svg { width: 15px; height: 15px; transform: rotate(180deg); }
+.screen-back:hover { color: var(--m-brand-deep); }
+.screen-title { margin: 0; font-family: var(--display); font-size: clamp(23px, 2.6vw, 29px); font-weight: 600; letter-spacing: -0.022em; }
+.screen-sub { margin: 6px 0 0; color: var(--m-ink-soft); font-size: 13px; line-height: 1.55; }
+
+/* ---------- Search screen ---------- */
+.search-screen { display: grid; gap: 16px; }
+.search-form { display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 16px; border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface); }
+.search-form:focus-within { border-color: var(--m-brand); }
+.search-form-icon { display: grid; place-items: center; width: 20px; height: 20px; color: var(--m-ink-soft); }
+.search-form-icon svg { width: 20px; height: 20px; }
+.search-form input { flex: 1; min-width: 0; min-height: 44px; border: 0; background: transparent; color: var(--m-ink); font-family: inherit; font-size: 15px; }
+.search-form input:focus { outline: none; }
+.search-submit { min-height: 44px; padding: 0 20px; border: 1px solid var(--m-brand); border-radius: var(--m-radius); background: var(--m-brand); color: var(--paper); font-size: 13.5px; font-weight: 700; cursor: pointer; }
+.search-submit:hover { background: var(--m-brand-deep); border-color: var(--m-brand-deep); }
+.search-recent { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.search-recent-label { color: var(--m-ink-soft); font-family: var(--utility); font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.search-chip { display: inline-flex; min-height: 36px; align-items: center; gap: 6px; padding: 0 13px; border: 1px solid var(--m-line); border-radius: 999px; background: var(--m-surface); color: var(--m-ink); font-size: 13px; font-weight: 600; }
+.search-chip:hover { border-color: var(--m-brand); color: var(--m-brand-deep); }
+.search-clear { min-height: 36px; padding: 0 10px; border: 0; background: none; color: var(--m-ink-soft); font-size: 12.5px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.search-group { display: grid; gap: 10px; }
+.search-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.search-group-head h2 { margin: 0; color: var(--m-ink); font-size: 14px; font-weight: 800; }
+.search-group-head a { color: var(--m-accent); font-size: 12.5px; font-weight: 700; }
+.search-services { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+
+/* ---------- Messages: a thread list beside the conversation ---------- */
+.pane { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.pane-list { display: grid; overflow: hidden; margin: 0; padding: 0; list-style: none; border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface); }
+.pane-list > li + li { border-top: 1px solid var(--m-line); }
+.pane-main { min-width: 0; }
+.pane-blank { display: grid; justify-items: center; align-content: center; gap: 10px; min-height: 320px; padding: 40px 22px; border: 1px dashed var(--m-mist); border-radius: var(--m-radius-lg); text-align: center; }
+.pane-blank h2 { margin: 0; font-family: var(--display); font-size: 20px; font-weight: 600; }
+.pane-blank p { max-width: 320px; margin: 0; color: var(--m-ink-soft); font-size: 13px; }
+
+/* ---------- Mobile bottom nav ---------- */
+.app-bottomnav { display: none; }
 
 
 /* =========================================================================
@@ -251,7 +375,8 @@
 .book-close:hover { background: var(--m-wash); }
 .book-close svg { width: 16px; height: 16px; }
 .book-head { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 14px; align-items: start; }
-.book-head > div { padding-inline-end: 28px; }
+/* Clear of the close button, so a long service title is never sat on. */
+.book-head > div { padding-inline-end: 54px; }
 .book-thumb { border-radius: var(--m-radius); }
 .book-title { margin: 0 0 4px; font-family: var(--display); font-size: 17px; font-weight: 600; line-height: 1.3; }
 .book-provider { margin: 0 0 6px; font-size: 13px; color: var(--m-ink-soft); }
@@ -281,39 +406,14 @@
    ========================================================================= */
 .acct { display: grid; gap: 18px; }
 
-/* Profile card — the Shopee "Me" header */
-.acct-profile {
-  position: relative; display: flex; align-items: center; gap: 16px;
-  padding: 22px 24px; border-radius: var(--m-radius-lg);
-  background: linear-gradient(120deg, #4a4a4a, #52667b 70%, #6d8196);
-  color: var(--paper); box-shadow: var(--m-shadow);
-}
-.acct-avatar {
-  display: grid; place-items: center; width: 68px; height: 68px; border-radius: 50%;
-  background: rgba(246, 245, 241, 0.16); border: 2px solid rgba(246, 245, 241, 0.4);
-  font-family: var(--display); font-size: 30px; font-weight: 700; flex: 0 0 auto;
-}
-.acct-id { display: grid; gap: 3px; min-width: 0; }
-.acct-id h1 { margin: 0; color: var(--paper); font-family: var(--display); font-size: clamp(20px, 2.4vw, 26px); font-weight: 600; letter-spacing: -0.02em; }
-.acct-email { margin: 0; font-size: 13px; color: rgba(246, 245, 241, 0.82); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.acct-since { margin: 2px 0 0; font-family: var(--utility); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(246, 245, 241, 0.66); }
-.acct-edit {
-  margin-left: auto; align-self: start; padding: 8px 16px; border-radius: 999px;
-  border: 1px solid rgba(246, 245, 241, 0.5); font-size: 12.5px; font-weight: 700; color: var(--paper);
-  transition: background 140ms ease;
-}
-.acct-edit:hover { background: rgba(246, 245, 241, 0.16); }
-
-/* Segmented section nav */
-.account-tabs { display: flex; gap: 4px; padding: 5px; background: var(--m-surface); border: 1px solid var(--m-line); border-radius: 999px; width: fit-content; }
-.account-tab { display: grid; min-height: 44px; place-items: center; padding: 9px 22px; border-radius: 999px; font-size: 13.5px; font-weight: 600; color: var(--m-ink-soft); transition: all 140ms ease; }
-.account-tab:hover { color: var(--m-ink); }
-.account-tab.is-active { background: var(--m-ink); color: var(--paper); }
-
+/* The account area's own column width; the rail is supplied by the shell. */
 .account-page { display: grid; gap: 24px; }
 .account-section { display: grid; gap: 14px; }
 .account-section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 14px; }
-.account-section-head h2 { margin: 0; font-family: var(--display); font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+/* A page's own heading is an `h1` now that the shell no longer prints one, and it
+   is styled by role rather than by tag so a section and a page match. */
+.account-section-head h1, .account-section-head h2 { margin: 0; font-family: var(--display); font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+.account-page .account-section-head:first-child h1 { font-size: clamp(23px, 2.6vw, 29px); letter-spacing: -0.022em; }
 .account-section-note { font-family: var(--utility); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--m-ink-soft); }
 .account-section-link { color: var(--m-accent); font-size: 12px; font-weight: 600; }
 .account-section-lede { margin: -6px 0 0; color: var(--m-ink-soft); font-size: 12.5px; line-height: 1.6; }
@@ -327,7 +427,6 @@
 .preview-tag { font-family: var(--utility); font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--m-ink-soft); background: var(--m-surface-2); border: 1px solid var(--m-line); padding: 4px 9px; border-radius: 999px; }
 
 /* Customer inbox and booking-bound conversation */
-.message-preview-note { margin: 0; padding: 12px 14px; border: 1px solid var(--m-line); border-radius: var(--m-radius); background: var(--m-surface-2); color: var(--m-ink-soft); font-size: 12.5px; line-height: 1.55; }
 .conversation-list { display: grid; margin: 0; padding: 0; list-style: none; border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface); overflow: hidden; }
 .conversation-list li + li { border-top: 1px solid var(--m-line); }
 .conversation-row { display: flex; min-height: 96px; align-items: center; gap: 14px; padding: 14px 16px; transition: background 140ms ease; }
@@ -347,9 +446,11 @@
 .thread-back svg { width: 16px; height: 16px; transform: rotate(180deg); }
 .thread-heading { display: flex; align-items: center; gap: 14px; min-width: 0; padding: 16px; border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface); }
 .thread-heading > div { min-width: 0; }
-.thread-counterpart { margin: 0 0 2px; color: var(--m-ink-soft); font-size: 12px; }
-.thread-heading h2 { overflow: hidden; margin: 0; color: var(--m-ink); font-family: var(--display); font-size: 18px; line-height: 1.25; text-overflow: ellipsis; }
+.thread-counterpart { overflow: hidden; margin: 0; color: var(--m-ink-soft); font-family: var(--utility); font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
+.thread-heading h2 { overflow: hidden; margin: 0 0 3px; color: var(--m-ink); font-family: var(--display); font-size: 18px; line-height: 1.25; text-overflow: ellipsis; }
 .thread-reference { margin: 5px 0 0; color: var(--m-ink-soft); font-family: var(--utility); font-size: 10px; }
+/* The list is always visible beside the thread on a wide screen. */
+@media (min-width: 901px) { .thread-back { display: none; } }
 .thread-history { display: grid; align-content: start; gap: 12px; min-height: 220px; max-height: 52dvh; overflow: auto; margin: 0; padding: 18px; border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface); list-style: none; }
 .thread-message { display: grid; gap: 5px; justify-self: end; width: fit-content; max-width: min(84%, 620px); padding: 11px 13px; border: 1px solid rgba(82, 102, 123, 0.2); border-radius: 14px 14px 4px 14px; background: var(--m-brand-wash); overflow-wrap: anywhere; }
 .thread-message-meta { display: flex; align-items: baseline; gap: 10px; color: var(--m-ink-soft); font-size: 10.5px; }
@@ -380,25 +481,35 @@
   .app-top-action { padding: 0 12px; }
 }
 
+/* The rail gives way to the bottom tab bar before the content gets cramped. */
+@media (max-width: 1000px) {
+  .app-shell-body { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .app-sidebar { display: none; }
+}
+
+/* One conversation at a time: the list steps aside for the thread it opened. */
+@media (max-width: 900px) {
+  .pane { grid-template-columns: minmax(0, 1fr); }
+  .pane[data-thread='open'] .pane-list { display: none; }
+}
+
 @media (max-width: 860px) {
   .app-shell-body { padding: 16px 14px 96px; }
   .app-topbar-inner { padding: 10px 14px; gap: 10px; }
   .app-brand-word { display: none; }
   .app-account-name { display: none; }
-  .app-messages-action { display: none; }
-  .app-request-action { display: none; }
   .app-topsearch { max-width: none; min-width: 0; padding-inline: 12px; }
   .shop-ask { padding: 22px 20px 19px; }
   .shop-index { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; }
   .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .shop-toolbar { align-items: center; }
-
-  .acct-profile { padding: 18px; gap: 13px; }
-  .acct-avatar { width: 56px; height: 56px; font-size: 24px; }
+  .search-services { grid-template-columns: minmax(0, 1fr); }
+  .me-card { padding: 16px; gap: 13px; }
+  .me-avatar { width: 50px; height: 50px; flex-basis: 50px; font-size: 22px; }
 
   .app-bottomnav {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
-    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
     background: var(--m-surface); border-top: 1px solid var(--m-line);
     padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
     box-shadow: 0 -4px 20px rgba(74, 74, 74, 0.1);
@@ -448,8 +559,6 @@
   .book-head { grid-template-columns: 72px minmax(0, 1fr); gap: 10px; }
   .book-foot { align-items: stretch; flex-direction: column; }
   .book-primary { min-height: 44px; }
-  .account-tabs { width: 100%; justify-content: space-between; }
-  .account-tab { flex: 1; min-width: 0; padding-inline: 4px; font-size: 11.5px; text-align: center; white-space: nowrap; }
   .conversation-row { min-height: 88px; gap: 10px; padding: 12px 10px; }
   .conversation-avatar { flex-basis: 40px; width: 40px; height: 40px; font-size: 19px; }
   .conversation-topline strong { font-size: 13px; }
@@ -475,3 +584,109 @@
   .svc-card:hover { transform: none; }
 }
 
+
+/* =========================================================================
+   Job posts — the customer's private request and the offers on it.
+   Same tokens as the rest of the shell: a job is a work order, and an offer is
+   a price written down, so both borrow the ledger and docket vocabulary.
+   ========================================================================= */
+
+.job-head-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.order-title-link { color: inherit; text-decoration: none; }
+.order-title-link:hover { text-decoration: underline; }
+
+.job-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px 24px; margin: 0; padding: 16px 18px; background: var(--m-surface); border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); }
+.job-facts div { display: grid; gap: 3px; }
+.job-facts dt { font-family: var(--utility); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--m-ink-soft); }
+.job-facts dd { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--m-ink); }
+
+.job-notice { display: grid; gap: 12px; padding: 16px 18px; background: var(--m-brand-wash); border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); }
+
+/* Disputes: the one panel that stops the machine rather than advancing it. */
+.dispute-panel { display: grid; gap: 12px; margin-top: 14px; padding: 16px 18px; border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); background: var(--paper-sunk); }
+.dispute-panel[data-state='disputed'] { border-color: rgba(178, 92, 62, 0.45); background: #fdf4f0; }
+.dispute-note { margin: 0; color: #4b5d6e; font-size: 12.5px; line-height: 1.6; }
+.dispute-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.dispute-label { color: var(--ink); font-size: 12.5px; font-weight: 600; }
+.dispute-reason { width: 100%; padding: 10px 12px; border: 1px solid var(--mist); border-radius: 8px; background: var(--card); color: var(--ink); font: inherit; font-size: 13px; resize: vertical; }
+.dispute-reason:focus { border-color: var(--ink); outline: none; }
+.job-notice p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--m-ink); }
+
+.job-form { display: grid; gap: 18px; max-width: 640px; }
+.job-field { display: grid; gap: 7px; }
+.job-label { font-family: var(--utility); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--m-ink-soft); }
+.job-input { min-height: 44px; padding: 11px 13px; border: 1px solid var(--m-line); border-radius: 8px; background: var(--m-surface); color: var(--m-ink); font-family: inherit; font-size: 14px; }
+.job-input:focus-visible { outline: 2px solid var(--m-brand); outline-offset: 1px; }
+.job-input[aria-invalid='true'] { border-color: #a15b52; }
+.job-textarea { min-height: 120px; resize: vertical; line-height: 1.6; }
+.job-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
+.job-radio-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.job-radio { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 1px solid var(--m-line); border-radius: 999px; background: var(--m-surface); font-size: 13px; font-weight: 600; color: var(--m-ink); cursor: pointer; }
+.job-checks { display: grid; gap: 10px; }
+.job-check { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--m-ink); cursor: pointer; }
+.job-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.job-form-error, .job-field-error { margin: 0; font-size: 12.5px; color: #8c4b43; }
+
+.offer-list { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.offer-card { display: grid; gap: 12px; padding: 18px; background: var(--m-surface); border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); box-shadow: var(--m-shadow-sm); }
+.offer-card[data-status='accepted'] { border-color: var(--m-brand); box-shadow: var(--m-shadow); }
+.offer-card[data-status='withdrawn'], .offer-card[data-status='rejected'], .offer-card[data-status='expired'] { opacity: 0.72; }
+.offer-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; justify-content: space-between; }
+.offer-provider { display: block; font-size: 14.5px; font-weight: 700; color: var(--m-ink); }
+.offer-handle { font-weight: 500; color: var(--m-ink-soft); }
+.offer-standing { display: block; font-size: 12px; color: var(--m-ink-soft); }
+.offer-amount { font-family: var(--display); font-size: 22px; font-weight: 600; color: var(--m-brand-deep); }
+.offer-scope { margin: 0; font-size: 13px; line-height: 1.6; color: var(--m-ink); }
+.offer-exclusions { margin: 0; font-size: 12px; color: var(--m-ink-soft); }
+.offer-note { margin: 0; font-size: 13px; line-height: 1.6; color: var(--m-ink-soft); }
+.offer-foot { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.offer-when { font-size: 12px; color: var(--m-ink-soft); }
+.offer-actions { display: inline-flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-left: auto; }
+.offer-accept { min-height: 44px; padding: 0 18px; }
+
+.review-form { display: grid; gap: 14px; padding: 18px; background: var(--m-surface); border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); }
+.review-stars { margin: 0; padding: 0; border: 0; }
+.review-star-row { display: inline-flex; gap: 4px; margin-top: 6px; }
+.review-star { display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid var(--m-line); border-radius: 8px; background: var(--m-surface); color: var(--m-mist); font-size: 20px; cursor: pointer; transition: color 140ms ease, border-color 140ms ease; }
+.review-star.is-lit { color: var(--m-brand); border-color: var(--m-brand); }
+
+/* Reviews — the customer's words behind a ServMate's rating. */
+.review-list { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.review-row { display: grid; gap: 8px; padding: 16px 18px; background: var(--m-surface); border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); }
+.review-row-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; }
+.review-row-name { font-size: 13.5px; font-weight: 700; color: var(--m-ink); }
+.review-row-rating { color: var(--m-brand); font-size: 13px; font-weight: 700; }
+.review-row-date { margin-left: auto; font-size: 12px; color: var(--m-ink-soft); }
+.review-row-comment { margin: 0; font-size: 13px; line-height: 1.65; color: var(--m-ink); }
+
+/* Private job media — only the owner and matching ServMates can fetch these. */
+.job-media { display: grid; gap: 12px; }
+.job-media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.job-media-item { display: grid; gap: 6px; }
+.job-media-frame { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border: 1px solid var(--m-line); border-radius: 10px; background: var(--m-surface); }
+.job-media-frame img, .job-media-frame video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.job-media-caption { margin: 0; font-size: 12px; line-height: 1.5; color: var(--m-ink-soft); }
+.job-media-remove { position: absolute; top: 6px; right: 6px; min-height: 32px; padding: 0 10px; border: 1px solid var(--m-line); border-radius: 999px; background: var(--m-surface); font-family: var(--utility); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: #8c4b43; cursor: pointer; }
+.job-media-upload { display: grid; gap: 10px; }
+.job-media-input { font-family: inherit; font-size: 13px; color: var(--m-ink); }
+.job-media-hint { margin: 0; font-size: 12px; line-height: 1.55; color: var(--m-ink-soft); }
+
+/* Report and block — two different acts, one disclosure. */
+.trust-controls { display: grid; gap: 12px; padding: 14px 16px; background: var(--m-surface); border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); }
+.trust-summary { cursor: pointer; font-family: var(--utility); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--m-ink-soft); }
+.trust-summary:focus-visible { outline: 2px solid var(--m-brand); outline-offset: 2px; }
+.trust-body { display: grid; gap: 12px; margin-top: 14px; }
+.blocked-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.blocked-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--m-line); }
+.blocked-name { font-size: 13.5px; font-weight: 600; color: var(--m-ink); }
+
+/* The provider console: four sections that each write through their own call. */
+.set-checks { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.order-edit { grid-column: 1 / -1; padding-top: 12px; border-top: 1px dashed var(--m-line); }
+.listing-manager, .portfolio-panel { display: grid; gap: 14px; }
+.portfolio-panel h3 { margin: 6px 0 0; }
+.job-media-frame-wide { aspect-ratio: 16 / 9; margin-top: 8px; }
+.pv-portfolio-list { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); margin: 0; padding: 0; list-style: none; }
+.pv-portfolio-item { display: grid; gap: 8px; align-content: start; padding: 14px; background: var(--m-surface); border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); }
+.pv-portfolio-title { margin: 0; font-family: var(--display); font-size: 16px; font-weight: 600; color: var(--m-ink); }
+.pv-portfolio-copy { margin: 0; font-size: 12.5px; line-height: 1.6; color: var(--m-ink-soft); }

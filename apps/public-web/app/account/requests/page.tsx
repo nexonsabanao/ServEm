@@ -4,6 +4,7 @@ import { CancelRequestButton } from '@/app/components/cancel-request-button';
 import { WorkOrderRow } from '@/app/components/work-order';
 import { getSessionAccount } from '@/lib/auth';
 import { OPEN_BOOKING_STATUSES, listBookings, summariseBookings, type Booking } from '@/lib/bookings';
+import { isBookingCancellable } from '@/lib/policy';
 import { getCatalog } from '@/lib/catalog-source';
 
 export const dynamic = 'force-dynamic';
@@ -46,8 +47,7 @@ export default async function RequestsPage({
     <div className="account-page">
       <section className="account-section" aria-labelledby="requests-title">
         <div className="account-section-head">
-          <h2 id="requests-title">My requests</h2>
-          <p className="account-section-lede">Track your service requests and manage open bookings.</p>
+          <h1 id="requests-title">My requests</h1>
         </div>
       </section>
       {summary.total > 0 && (
@@ -85,10 +85,7 @@ export default async function RequestsPage({
           {summary.total === 0 ? (
             <>
               <h2>No requests yet</h2>
-              <p>
-                Send your first request and it appears here with a reference you can quote
-                to the ServMate.
-              </p>
+              <p>Send your first request and it appears here, with a reference to quote.</p>
               <Link className="button button-primary" href="/home">Browse local services</Link>
             </>
           ) : (
@@ -109,9 +106,13 @@ export default async function RequestsPage({
 }
 
 function RowAction({ booking, listed }: { booking: Booking; listed: boolean }) {
+  // The service id is what makes these a destination: Home opens that exact
+  // listing's booking sheet rather than dropping you in the marketplace.
+  const serviceHref = `/home?service=${encodeURIComponent(booking.serviceId)}`;
+
   if (booking.status === 'cancelled') {
     return listed ? (
-      <Link className="quiet-button" href="/home">
+      <Link className="quiet-button" href={serviceHref}>
         Book again
       </Link>
     ) : (
@@ -122,11 +123,15 @@ function RowAction({ booking, listed }: { booking: Booking; listed: boolean }) {
   return (
     <span className="order-action-group">
       {listed && (
-        <Link className="quiet-button" href="/home">
+        <Link className="quiet-button" href={serviceHref}>
           View service
         </Link>
       )}
-      <CancelRequestButton bookingId={booking.id} reference={booking.reference} />
+      {/* Offered only where the server would accept it: the same table that
+          decides `cancelBooking` decides whether this button exists. */}
+      {isBookingCancellable(booking.status) && (
+        <CancelRequestButton bookingId={booking.id} reference={booking.reference} />
+      )}
     </span>
   );
 }

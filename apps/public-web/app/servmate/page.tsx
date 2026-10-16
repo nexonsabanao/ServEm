@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
+import { AppShell } from '@/app/components/feed/app-shell';
 import { ServmateWorkbench } from '@/app/components/servmate/servmate-workbench';
 import { getSessionAccount } from '@/lib/auth';
-import { listBookings } from '@/lib/bookings';
+import { listBookings, summariseBookings } from '@/lib/bookings';
 import { formatDayShort, formatFromPrice, formatReplies, formatTimeOfDay } from '@/lib/format';
 import { listFeedServices, listProviderCards } from '@/lib/servmate-profile';
 import {
@@ -87,7 +88,11 @@ export default async function ServmatePage({ searchParams }: { searchParams: Sea
     },
   };
 
-  return <ServmateWorkbench data={data} accountName={account.name} />;
+  return (
+    <AppShell account={{ name: account.name }} requestCount={summariseBookings(bookings).total}>
+      <ServmateWorkbench data={data} />
+    </AppShell>
+  );
 }
 
 function firstValue(value: string | string[] | undefined): string {

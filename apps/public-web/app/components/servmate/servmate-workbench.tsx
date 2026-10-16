@@ -2,9 +2,8 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
-import { ChatIcon, ChevronDownIcon, LocationIcon, StarIcon, VerifiedIcon } from '@/app/components/icons';
-import { SignOutButton } from '@/app/components/sign-out-button';
+import { useEffect, useState } from 'react';
+import { ChatIcon, LocationIcon, StarIcon, VerifiedIcon } from '@/app/components/icons';
 import {
   COVERAGE_CHOICES,
   emptyDraft,
@@ -30,13 +29,16 @@ const DECISION_LABEL: Record<ServmateDecision, string> = {
  * opens the app to see. Every figure is server-formatted text handed in through
  * `data`, so the first client render matches the server markup exactly and the
  * queue can be re-grouped locally once the device's saved decisions load.
+ *
+ * The console supplies its own toolbar — which ServMate you are previewing, and
+ * whether you are taking work — and nothing else: the app shell above it already
+ * carries the brand, the navigation and the account menu, exactly as it does on
+ * the customer side.
  */
-export function ServmateWorkbench({ data, accountName }: { data: WorkbenchData; accountName: string }) {
+export function ServmateWorkbench({ data }: { data: WorkbenchData }) {
   const router = useRouter();
   const [state, setState] = useState<ServmatePreviewState>(emptyPreviewState);
   const [ready, setReady] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const provider = data.provider;
 
   useEffect(() => {
@@ -58,22 +60,6 @@ export function ServmateWorkbench({ data, accountName }: { data: WorkbenchData; 
       // The in-memory decisions still work when storage is unavailable.
     }
   }, [state, ready]);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const closeOnOutsideClick = (event: PointerEvent) => {
-      if (event.target instanceof Node && !menuRef.current?.contains(event.target)) setMenuOpen(false);
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMenuOpen(false);
-    };
-    document.addEventListener('pointerdown', closeOnOutsideClick);
-    document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('pointerdown', closeOnOutsideClick);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
-  }, [menuOpen]);
 
   const openRequests = data.requests.filter((request) => request.status === 'requested');
   const waiting = openRequests.filter((request) => !state.decisions[request.id]);
@@ -108,17 +94,9 @@ export function ServmateWorkbench({ data, accountName }: { data: WorkbenchData; 
   return (
     <div className="sm">
       <ServmateBar
-        providerName={provider.name}
         providerId={provider.id}
-        area={provider.area}
         roster={data.roster}
         accepting={state.accepting}
-        menuOpen={menuOpen}
-        menuRef={menuRef}
-        initial={firstLetter(accountName)}
-        accountName={accountName}
-        onToggleMenu={() => setMenuOpen((open) => !open)}
-        onCloseMenu={() => setMenuOpen(false)}
         onAcceptingChange={(accepting) => setState((prev) => ({ ...prev, accepting }))}
         onPreviewChange={(id) => router.push(`/servmate?as=${id}`)}
       />
@@ -443,43 +421,29 @@ function RequestTicket({
   );
 }
 
+/**
+ * The console's toolbar: whose workbench this is, and whether you are taking
+ * work. Two controls, because those are the only two questions that are about
+ * the console rather than about the app around it.
+ */
 function ServmateBar({
-  providerName,
   providerId,
-  area,
   roster,
   accepting,
-  menuOpen,
-  menuRef,
-  initial,
-  accountName,
-  onToggleMenu,
-  onCloseMenu,
   onAcceptingChange,
   onPreviewChange,
 }: {
-  providerName: string;
   providerId: string;
-  area: string;
   roster: WorkbenchData['roster'];
   accepting: boolean;
-  menuOpen: boolean;
-  menuRef: React.RefObject<HTMLDivElement | null>;
-  initial: string;
-  accountName: string;
-  onToggleMenu: () => void;
-  onCloseMenu: () => void;
   onAcceptingChange: (accepting: boolean) => void;
   onPreviewChange: (id: string) => void;
 }) {
   return (
     <header className="sm-bar">
       <div className="sm-bar-inner">
-        <span className="sm-brand">
-          <span className="sm-brand-mark" aria-hidden="true">S</span>
-          <span className="sm-brand-word">servem</span>
-          <span className="sm-mode">ServMate</span>
-        </span>
+        {/* The page's `h1` is the provider's name below; this names the console. */}
+        <p className="sm-mode">ServMate console</p>
 
         <div className="sm-bar-actions">
           <label className="sm-preview-pick">
@@ -502,37 +466,6 @@ function ServmateBar({
             <span className="sm-toggle-track" aria-hidden="true"><span className="sm-toggle-thumb" /></span>
             {accepting ? 'Accepting jobs' : 'Paused'}
           </button>
-
-          <div className="sm-account" ref={menuRef}>
-            <button
-              type="button"
-              className="sm-account-trigger"
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              onClick={onToggleMenu}
-            >
-              <span className="sm-account-avatar" aria-hidden="true">{initial}</span>
-              <span className="sm-account-name">{accountName.split(' ')[0]}</span>
-              <span className="sm-account-caret" aria-hidden="true"><ChevronDownIcon /></span>
-            </button>
-            {menuOpen && (
-              <div className="sm-account-menu" role="menu" onMouseLeave={onCloseMenu}>
-                <div className="sm-account-id">
-                  <strong>Previewing {providerName}</strong>
-                  <span>Workbench is a design preview</span>
-                </div>
-                <Link href={`/providers/${providerId}`} role="menuitem" onClick={onCloseMenu}>
-                  Your public profile
-                </Link>
-                <Link href="/home" role="menuitem" onClick={onCloseMenu}>
-                  Switch to customer view
-                </Link>
-                <div className="sm-account-signout">
-                  <SignOutButton className="sm-signout" />
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </header>

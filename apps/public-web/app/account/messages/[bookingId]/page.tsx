@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 
 type RouteParams = Promise<{ bookingId: string }>;
 
+/** One conversation, in the pane beside the thread list. */
 export default async function MessageThreadPage({
   params,
 }: Readonly<{ params: RouteParams }>) {
@@ -17,9 +18,5 @@ export default async function MessageThreadPage({
   const conversation = await getConversation(account.id, bookingId);
   if (!conversation) notFound();
 
-  return (
-    <div className="account-page">
-      <MessageThread conversation={conversation} />
-    </div>
-  );
+  return <MessageThread conversation={conversation} />;
 }

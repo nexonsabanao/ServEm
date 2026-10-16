@@ -7,6 +7,7 @@ import {
   jsonResponse,
   readJsonBody,
 } from '@/lib/http';
+import { clientAddress, consume, tooManyResponse } from '@/lib/rate-limit';
 import { readString, validateEmail, validateName, validatePassword } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
@@ -32,6 +33,11 @@ export async function POST(request: Request) {
   if (Object.keys(errors).length > 0) {
     return jsonResponse({ message: 'Check the highlighted fields.', errors }, 400);
   }
+
+  // Account creation is limited per client address: one person opening an
+  // account does not approach it, and a scripted run cannot mint dozens.
+  const addressLimit = consume('signup', clientAddress(request));
+  if (!addressLimit.ok) return tooManyResponse(addressLimit.retryAfterSeconds);
 
   const result = await registerUser({ name, email, password });
   if (!result.ok) {

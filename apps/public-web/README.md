@@ -24,6 +24,24 @@ Passwords are hashed with scrypt and a per-account salt. Sessions are random tok
 routes reject cross-site Origins, and every booking is scoped to the session's account id
 rather than anything the browser supplies.
 
+## Jobs, offers and discovery
+
+A customer can post a job privately and collect competing offers on it:
+
+- `POST /api/jobs` starts a draft, `POST /api/jobs/:id/publish` opens it for discovery
+- `GET /api/jobs/mine` and `GET|PATCH /api/jobs/:id` are the owner's own view, `POST /api/jobs/:id/cancel` closes one
+- `GET /api/jobs/:id/offers` is the owner's comparison list, `POST /api/jobs/:id/offers/:offerId/accept` books with one, and `.../decline` passes on one
+- `POST /api/servmate/onboard`, `PUT /api/servmate/me/categories` and `PUT /api/servmate/me/coverage` turn an account into a ServMate with the structured category and coverage discovery matches on
+- `GET /api/servmate/me/available-jobs` and `/available-jobs/:jobId` are the private feed and the entitled detail; `POST /api/servmate/me/available-jobs/:jobId/offers` bids, and `GET /api/servmate/me/offers` plus `.../:offerId/withdraw` are the provider's own side
+
+A job never appears in the public catalog. It is only visible to a ServMate whose active
+categories include it, whose coverage areas include its city, and whom no block hides — a
+rule that lives in `lib/policy.ts` and is applied by `lib/matching.ts`. The discovery feed
+carries the city but not the street address or access notes; those reach only the owner and a
+ServMate already entitled to the detail, so an unauthorized id is answered exactly like an
+absent one. Accepting an offer is one transaction: it writes the booking with a frozen
+snapshot of the agreed amount and scope, withdraws the other live offers, and closes the job.
+
 ## Sign in with Google and Apple
 
 The flows are implemented in full — PKCE (`S256`), a single-use `state`, an `id_token`
@@ -68,6 +86,33 @@ Leave the variables unset to keep social sign-in off; the dialog then explains w
 variable each provider needs. Use a separate development client for localhost rather than
 reusing the production one.
 
+## The signed-in app
+
+Every screen behind sign-in lives inside one frame (`app/components/feed/app-shell.tsx`): a rail
+beside the content on a wide screen, a tab bar under the thumb on a phone, and a search field that
+is a plain `GET` form to `/search` — so a query is a URL you can reload, share or go back to, and
+search works before any JavaScript loads. A screen never draws its own navigation.
+
+| Screen | What it is for |
+|---|---|
+| `/home` | The marketplace: area chips, the category index, sortable tickets, and a booking sheet |
+| `/search` | Ranked ServMates and listings from `lib/search.ts`, with recent terms kept on the device |
+| `/account/messages` | Two panes — the thread list beside the open conversation (one at a time on a phone) |
+| `/account/requests`, `/account/jobs` | The account's own bookings and its private job posts |
+| `/account` | The live work order, plus rows that carry their own counts |
+| `/account/settings` | The account card (name, email, join date) and the way into `security`, `notifications`, `privacy`, `selling` and `about` |
+| `/servmate`, `/servmate/jobs` | The provider console and the private job feed, in the same frame |
+
+Two habits are worth knowing before changing it. **A row that navigates shows where it goes**: the
+label names the setting and the value states what it currently is ("Nobody blocked", "2 of 5
+switched on"), so a list of settings reads as a summary rather than a menu of guesses. And **a link
+names the thing it opens**: `?service=<id>` on `/home` opens that listing's booking sheet, which is
+what "Book again" points at instead of the marketplace in general.
+
+Who you are is shown in exactly one place — `/account/settings`. The frame carries an avatar and a
+first name because that is app furniture; the email, the join date and the profile fields are not
+repeated onto every screen.
+
 ## Store
 
 Everything the site persists lives in `.data/servem.json` (gitignored): accounts, sessions,
@@ -107,14 +152,36 @@ TypeScript types natively — the application itself still supports the Node 20.
 not chosen a package manager or committed a lockfile yet (decision D-004 in
 `../../sidehustle_marketplace_blueprint_v3/docs/DECISION_REGISTER.md`).
 
+`test/register.mjs` installs a small module-resolution hook first: Node will not resolve the
+extensionless `./store` imports Next bundles happily, so the hook teaches it the same rule. It
+is used only by the test run.
+
+The store-backed tests point `SERVEM_DATA_DIR` at a temporary directory before importing anything,
+so they can never read or write the `.data/` file a running site is serving.
+
+### End to end against a running server
+
+```
+SERVEM_DATA_DIR=$(mktemp -d) npm run dev -- --port 3100   # terminal one
+npm run test:e2e                                          # terminal two
+```
+
+`test/e2e-live.mjs` drives the real HTTP surface with real session cookies: it signs up a
+customer and five ServMates, posts and publishes a job, checks the eligible, the
+wrong-category and the out-of-area providers each see exactly what they should, has two
+ServMates bid on the same job (including after the first offer arrives), and then compares and
+accepts. It exits non-zero if any check fails. Point `BASE` at another origin, and
+`SERVEM_DATA_DIR` at a scratch directory so the throwaway accounts stay out of your own store.
+
 
 To connect the public catalog, copy `.env.example` to `.env.local` and replace the placeholder with the API root ending in `/api/v1`. The website only calls `GET /services`, with a 20-item limit. No API secret belongs in the browser or this file.
 
 ## Current scope and blueprint gates
 
-- Search, pricing filters, sorting, refresh, service summaries, FAQ disclosures, mobile navigation, and service details are interactive.
+- Search is its own screen (`/search`, ranked over titles, categories, areas and ServMate names, with recent terms on the device); pricing filters, sorting, refresh, service summaries, FAQ disclosures, mobile navigation, and service details are interactive.
 - Sign in, sign up, sign out and booking requests are implemented against the local store described above. The listings and ServMate profiles the interface shows are seeded demo records rather than a hardcoded array, but they are still samples: no row represents a real provider, and the storefront keeps its "Design preview" label.
 - The current OpenAPI starter does not define service details, categories, provider public profiles, or the rest of the account/help/policy flows. The interface does not invent those data or permissions.
 - Google and Apple sign-in are implemented as described above; both require credentials that are not in this repository, so neither can be exercised without them.
-- Email verification, password reset, rate limiting, account linking from an existing password account into the dialog, age/category eligibility, booking terms, and deletion policies remain open decisions. No payment, payout, or provider-side action exists yet.
+- Password recovery is implemented over email: `/reset` sends a single-use, hashed link through `lib/email.ts` (Resend's REST API, `RESEND_API_KEY` in `.env.example`) and answers the same way whether or not the address has an account. Disputes are implemented too — a customer can hold a booking that is under way or awaiting confirmation, and neither side can finish or review it until they close it. Reporting has a readable end as well: filing a report from a profile, job or message records it, and `/account/reports` shows the account what it filed and where each report stands. The marketplace side of both queues lives at `/moderation`, an operator console unlocked with `SERVEM_MODERATION_TOKEN` rather than an account — reading it is disabled until that variable is set, and every action it takes is recorded in the `moderationActions` audit rows. See `docs/requirements/user-flow-conformance.md` for the row-by-row comparison with the two user-flow documents.
+- Email verification, account linking from an existing password account into the dialog, age/category eligibility, booking terms, moderation *process* (evidence, appeals, second-person review), and deletion policies remain open decisions. No payment, payout, or provider-side action exists yet.
 - This checkout does not include the API. Live catalog mode requires a separately running API at `API_BASE_URL`.

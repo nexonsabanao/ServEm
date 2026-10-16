@@ -3,12 +3,16 @@ import { notFound, redirect } from 'next/navigation';
 import { AppShell } from '@/app/components/feed/app-shell';
 import { ProviderProfileDraft } from '@/app/components/feed/provider-profile-draft';
 import { ProviderServiceList } from '@/app/components/feed/provider-services';
+import { TrustControls } from '@/app/components/trust-controls';
 import { ChevronRightIcon, LocationIcon, StarIcon, VerifiedIcon } from '@/app/components/icons';
 import { getSessionAccount } from '@/lib/auth';
 import { listBookings, summariseBookings } from '@/lib/bookings';
 import { feedServiceFrom, providerFrom } from '@/lib/feed-data';
-import { formatFromPrice, formatReplies } from '@/lib/format';
+import { formatDay, formatFromPrice, formatReplies } from '@/lib/format';
+import { getPortfolio, getWorkPosts } from '@/lib/portfolio';
 import { getProviderView } from '@/lib/servmate-profile';
+import { getServmateReviewViews } from '@/lib/reviews';
+import { hasBlocked } from '@/lib/trust';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +43,13 @@ export default async function ProviderProfilePage({ params }: { params: Params }
   const view = await getProviderView(providerId);
   if (!view) notFound();
 
-  const [bookings] = await Promise.all([listBookings(account.id)]);
+  const [bookings, reviews, blocked, portfolio, posts] = await Promise.all([
+    listBookings(account.id),
+    getServmateReviewViews(providerId),
+    hasBlocked(account.id, view.userId),
+    getPortfolio(providerId),
+    getWorkPosts(providerId),
+  ]);
   const summary = summariseBookings(bookings);
   const provider = providerFrom(view);
   const services = view.listings.map((listing) => feedServiceFrom(listing, provider));
@@ -51,7 +61,7 @@ export default async function ProviderProfilePage({ params }: { params: Params }
       : '';
 
   return (
-    <AppShell account={account} requestCount={summary.total}>
+    <AppShell account={{ name: account.name }} requestCount={summary.total}>
       <div className="pv">
         <nav className="pv-crumb" aria-label="Breadcrumb">
           <Link href="/home">Home</Link>
@@ -158,6 +168,98 @@ export default async function ProviderProfilePage({ params }: { params: Params }
               <p>This ServMate has no live listings. Their workbench is where listings appear.</p>
             </div>
           )}
+        </section>
+
+        <section className="pv-section" aria-labelledby="pv-reviews-title">
+          <div className="pv-section-head">
+            <h2 id="pv-reviews-title">Reviews</h2>
+            <span className="pv-count">{reviews.length}</span>
+          </div>
+          {reviews.length > 0 ? (
+            <ul className="review-list">
+              {reviews.map((review) => (
+                <li key={review.id} className="review-row">
+                  <div className="review-row-head">
+                    <span className="review-row-name">{review.reviewerName}</span>
+                    <span className="review-row-rating" aria-label={`${review.rating} out of 5`}>
+                      {review.rating}★
+                    </span>
+                    <span className="review-row-date">{formatDay(review.createdAt)}</span>
+                  </div>
+                  {review.comment && <p className="review-row-comment">{review.comment}</p>}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="pv-empty">
+              <h3>No reviews yet</h3>
+              <p>Reviews appear here once a customer confirms a completed job.</p>
+            </div>
+          )}
+        </section>
+
+        {portfolio.length > 0 && (
+          <section className="pv-section" aria-labelledby="pv-portfolio-title">
+            <div className="pv-section-head">
+              <h2 id="pv-portfolio-title">Portfolio</h2>
+              <span className="pv-count">{portfolio.length}</span>
+            </div>
+            <ul className="pv-portfolio-list">
+              {portfolio.map((item) => (
+                <li key={item.id} className="pv-portfolio-item">
+                  {item.imageUrl && (
+                    <div className="job-media-frame">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={item.imageUrl} alt={item.title} loading="lazy" />
+                    </div>
+                  )}
+                  <span className="status-stamp" data-status={item.source}>
+                    <span className="status-dot" aria-hidden="true" />
+                    {item.source === 'completed_booking' ? 'Verified job' : 'Self-published'}
+                  </span>
+                  <h3 className="pv-portfolio-title">{item.title}</h3>
+                  {item.description && <p className="pv-portfolio-copy">{item.description}</p>}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {posts.length > 0 && (
+          <section className="pv-section" aria-labelledby="pv-posts-title">
+            <div className="pv-section-head">
+              <h2 id="pv-posts-title">Work updates</h2>
+              <span className="pv-count">{posts.length}</span>
+            </div>
+            <ul className="review-list">
+              {posts.map((entry) => (
+                <li key={entry.id} className="review-row">
+                  <div className="review-row-head">
+                    <span className="review-row-name">{provider.name}</span>
+                    <span className="review-row-date">{formatDay(entry.createdAt)}</span>
+                  </div>
+                  <p className="review-row-comment">{entry.body}</p>
+                  {entry.imageUrl && (
+                    <div className="job-media-frame job-media-frame-wide">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={entry.imageUrl} alt="" loading="lazy" />
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        <section className="pv-section" aria-labelledby="pv-trust-title">
+          <div className="pv-section-head">
+            <h2 id="pv-trust-title">Report or block</h2>
+          </div>
+          <TrustControls
+            subject={provider.name}
+            reportedUserId={view.userId}
+            initiallyBlocked={blocked}
+          />
         </section>
 
         <p className="pv-foot">

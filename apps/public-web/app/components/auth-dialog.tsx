@@ -247,6 +247,14 @@ export function AuthDialog({ open, mode, onModeChange, onClose, onAuthenticated 
             </p>
           )}
 
+          {!isSignup && !errors.password && (
+            <p className="auth-hint">
+              <Link className="auth-switch-button" href="/reset">
+                Forgot your password?
+              </Link>
+            </p>
+          )}
+
           {message && <p className="auth-status" role="status" aria-live="polite">{message}</p>}
 
           <button className="button button-primary auth-submit" type="submit" disabled={busy}>

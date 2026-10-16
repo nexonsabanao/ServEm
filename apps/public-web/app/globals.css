@@ -446,6 +446,28 @@ h2 {
   color: var(--ink-soft); font-family: var(--utility); font-size: 9.5px; line-height: 1.6;
 }
 
+/* ---------- password recovery ---------- */
+
+.reset-page {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 40px 20px;
+  background: var(--paper-sunk);
+}
+.reset-card {
+  width: min(430px, 100%);
+  padding: clamp(22px, 5vw, 34px);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 0 18px 44px rgba(44, 50, 56, 0.08);
+}
+.reset-card h1 { margin: 10px 0 0; font-size: clamp(26px, 5vw, 30px); }
+.reset-card .auth-switch { text-align: center; }
+.reset-card .auth-hint { margin-top: -4px; }
+.reset-card .auth-hint a { color: var(--slate-deep); font-weight: 700; }
+
 .booking-confirmed {
   display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: start; margin: 18px 0 0;
   padding: 14px; border: 1px solid rgba(109, 129, 150, 0.34); border-radius: 8px; background: var(--slate-wash);
@@ -669,6 +691,10 @@ h2 {
 .order-brief { max-width: 520px; margin: 0; color: var(--ink-soft); font-size: 12.5px; line-height: 1.6; }
 .order-area { color: var(--ink-soft); font-family: var(--utility); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
 .order-row[data-status='cancelled'] .order-what h3 { color: var(--ink-soft); }
+
+/* Notifications reuse the ledger row; unread is marked without changing layout. */
+.notif-row.is-unread { box-shadow: inset 3px 0 0 var(--slate-deep); padding-left: 14px; }
+.notif-row.is-unread .order-when span { color: var(--slate-deep); font-weight: 700; }
 .order-state { padding-top: 2px; }
 .order-actions { display: flex; justify-content: flex-end; }
 .order-action-group { display: grid; gap: 9px; justify-items: end; }
@@ -974,6 +1000,89 @@ h2 {
   .method-list li { grid-template-columns: minmax(0, 1fr) auto; gap: 10px 14px; }
   .method-detail { grid-column: 1 / -1; grid-row: 2; }
   .session-panel { flex-direction: column; align-items: flex-start; }
+}
+
+/* ---------- moderation console ----------
+ * An operator tool, so it reads as a document rather than a storefront: one
+ * column, monospace metadata, and case text at a size a person can actually
+ * read all day. It deliberately shares the marketplace's palette and typefaces
+ * so the two are recognisably the same product, and it deliberately shares
+ * nothing else — no customer chrome, no navigation into the marketplace.
+ */
+
+.docket {
+  display: grid;
+  gap: 28px;
+  align-content: start;
+  width: min(940px, 100%);
+  margin: 0 auto;
+  padding: clamp(24px, 5vw, 52px) 20px clamp(56px, 8vw, 96px);
+}
+.docket-gate { min-height: 100dvh; align-content: center; background: var(--paper-sunk); }
+.docket-card {
+  display: grid;
+  gap: 14px;
+  padding: clamp(16px, 3vw, 24px);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 0 14px 34px rgba(44, 50, 56, 0.06);
+}
+.docket-gate .docket-card { width: min(470px, 100%); margin: 0 auto; }
+
+.docket-head { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; }
+.docket-kicker { margin: 0; font-family: var(--utility); font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--slate-deep); }
+.docket h1 { margin: 6px 0 0; font-family: var(--display); font-size: clamp(26px, 4vw, 34px); font-weight: 600; letter-spacing: -0.02em; }
+.docket-lede { max-width: 64ch; margin: 8px 0 0; color: var(--ink-soft); font-size: 13.5px; line-height: 1.65; }
+.docket-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+.docket-queue { display: grid; gap: 12px; }
+.docket-queue-head { display: grid; gap: 4px; }
+.docket-queue-head h2 { margin: 0; font-family: var(--display); font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+.docket-list { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.docket-empty {
+  margin: 0; padding: 14px 16px; border: 1px dashed var(--mist); border-radius: 8px;
+  background: var(--paper-sunk); color: var(--ink-soft); font-size: 12.5px; line-height: 1.6;
+}
+
+.docket-case-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
+.docket-case-head h3 { margin: 4px 0 0; font-family: var(--display); font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+.docket-ref { margin: 0; font-family: var(--utility); font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--slate-deep); }
+.docket-meta { margin: 3px 0 0; color: var(--ink-soft); font-family: var(--utility); font-size: 10.5px; }
+
+.docket-facts { display: flex; flex-wrap: wrap; gap: 6px 24px; margin: 0; }
+.docket-facts div { display: grid; gap: 2px; }
+.docket-facts dt { font-family: var(--utility); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+.docket-facts dd { margin: 0; font-size: 13px; }
+
+.docket-evidence { display: grid; gap: 7px; }
+.docket-quote {
+  margin: 0; padding: 11px 14px; border-left: 3px solid var(--mist); background: var(--paper-sunk);
+  color: var(--ink); font-size: 13.5px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+
+.docket-timeline { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.docket-timeline li { display: grid; grid-template-columns: 148px minmax(0, 1fr); gap: 10px; font-size: 12.5px; }
+.docket-when { color: var(--ink-soft); font-family: var(--utility); font-size: 10px; font-variant-numeric: tabular-nums; }
+.docket-what { overflow-wrap: anywhere; line-height: 1.55; }
+
+.docket-actions { display: grid; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+.docket-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+/*
+ * These buttons are held back until a decision is written down, which is not the
+ * app's usual "a request is in flight" disabled state — so they say `not-allowed`
+ * rather than inheriting the global `wait`. A pointer that promises a pending
+ * action is a small lie, and this is the one place the app disables a button
+ * before anything was submitted.
+ */
+.docket-actions .button:disabled, .docket-actions .quiet-button:disabled { cursor: not-allowed; }
+.docket-hint { margin: 0; color: var(--ink-soft); font-size: 11.5px; line-height: 1.6; }
+.docket-hint code { font-family: var(--utility); font-size: 11px; }
+.docket-unlock { display: grid; gap: 8px; }
+
+@media (max-width: 640px) {
+  .docket-timeline li { grid-template-columns: 1fr; gap: 2px; }
+  .docket-head { align-items: flex-start; }
 }
 
 @media (prefers-reduced-motion: reduce) {

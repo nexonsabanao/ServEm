@@ -1,4 +1,5 @@
-import { query } from './store';
+import { randomUUID } from 'node:crypto';
+import { query, transact } from './store';
 import { canReviewBooking, type Decision } from './policy';
 import type { Database, ReviewRecord } from './store';
 
@@ -83,6 +84,32 @@ export async function getServmateReviews(servmateProfileId: string): Promise<Rev
   return query((database) => reviewSummaryFor(database, servmateProfileId));
 }
 
+/** A published review as a profile shows it, with the reviewer's name. */
+export type ReviewView = Review & { reviewerName: string };
+
+/**
+ * The reviews behind a rating, newest first, each with the customer's name.
+ *
+ * Only published ones: a review awaiting moderation or removed afterwards is
+ * not part of what the marketplace says about this ServMate.
+ */
+export async function getServmateReviewViews(servmateProfileId: string): Promise<ReviewView[]> {
+  return query((database) =>
+    database.reviews
+      .filter(
+        (review) =>
+          review.servmateProfileId === servmateProfileId &&
+          review.publicationStatus === 'published',
+      )
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .map((review) => ({
+        ...toReview(review),
+        reviewerName:
+          database.users.find((user) => user.id === review.reviewerUserId)?.name ?? 'A customer',
+      })),
+  );
+}
+
 /** Whether this account may still review this booking. */
 export async function canReview(
   bookingId: string,
@@ -91,5 +118,93 @@ export async function canReview(
   return query((database) => {
     const decision = canReviewBooking(database, bookingId, userId);
     return decision.allowed ? { allowed: true as const, value: { id: decision.value.id } } : decision;
+  });
+}
+
+const COMMENT_MAX = 1000;
+
+export type SubmitReviewResult =
+  | { ok: true; review: Review }
+  | { ok: false; error: 'not_found' | 'not_reviewable' }
+  | { ok: false; error: 'invalid'; errors: Record<string, string> };
+
+/**
+ * Writes the customer's review of a completed booking (§10.9).
+ *
+ * `canReviewBooking` is the authority on *who* may review: the booking's own
+ * customer, exactly once, on a booking that actually completed. This validates
+ * what they said, stores it published, and tells the ServMate.
+ *
+ * A booking that is not reviewable yet — because the work is not finished — is
+ * reported as such; one that belongs to somebody else is reported as absent.
+ */
+export async function submitReview(input: {
+  bookingId: string;
+  reviewerUserId: string;
+  rating: unknown;
+  comment?: unknown;
+}): Promise<SubmitReviewResult> {
+  const errors: Record<string, string> = {};
+  const rating =
+    typeof input.rating === 'number' && Number.isInteger(input.rating)
+      ? input.rating
+      : undefined;
+  if (rating === undefined || rating < 1 || rating > 5) {
+    errors.rating = 'Choose a rating from 1 to 5.';
+  }
+
+  let comment: string | undefined;
+  if (input.comment !== undefined && input.comment !== null && input.comment !== '') {
+    if (typeof input.comment !== 'string' || Array.from(input.comment.trim()).length > COMMENT_MAX) {
+      errors.comment = `Keep the comment under ${COMMENT_MAX} characters.`;
+    } else {
+      comment = input.comment.trim();
+    }
+  }
+
+  if (Object.keys(errors).length > 0) return { ok: false as const, error: 'invalid' as const, errors };
+
+  return transact((database) => {
+    const booking = database.bookings.find((candidate) => candidate.id === input.bookingId);
+    if (!booking) return { ok: false as const, error: 'not_found' as const };
+
+    const decision = canReviewBooking(database, input.bookingId, input.reviewerUserId);
+    if (!decision.allowed) {
+      if (booking.userId !== input.reviewerUserId) {
+        return { ok: false as const, error: 'not_found' as const };
+      }
+      return { ok: false as const, error: 'not_reviewable' as const };
+    }
+
+    const record: ReviewRecord = {
+      id: randomUUID(),
+      bookingId: input.bookingId,
+      reviewerUserId: input.reviewerUserId,
+      servmateProfileId: booking.servmateProfileId!,
+      rating: rating!,
+      ...(comment ? { comment } : {}),
+      // Published on the spot: there is no moderation queue in Release 1, and a
+      // review nobody can see would be a rating the marketplace pretends to
+      // collect. The `pending` state is kept for the moderation pass.
+      publicationStatus: 'published',
+      createdAt: new Date().toISOString(),
+    };
+    database.reviews.push(record);
+
+    const provider = database.servmateProfiles.find(
+      (candidate) => candidate.id === booking.servmateProfileId,
+    );
+    if (provider) {
+      database.notifications.push({
+        id: randomUUID(),
+        recipientUserId: provider.userId,
+        notificationType: 'review_received',
+        entityType: 'booking',
+        entityId: input.bookingId,
+        createdAt: record.createdAt,
+      });
+    }
+
+    return { ok: true as const, review: toReview(record) };
   });
 }

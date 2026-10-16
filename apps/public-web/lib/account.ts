@@ -1,6 +1,6 @@
-import { hashPassword, verifyPassword } from './auth';
 import { bookingTitle } from './bookings';
 import { mergePreferences, type AccountPreferences } from './preferences';
+import { hashPassword, verifyPassword } from './passwords';
 import { mergeProfile, type CustomerProfile, type ProfilePatch } from './profile';
 import { query, transact } from './store';
 

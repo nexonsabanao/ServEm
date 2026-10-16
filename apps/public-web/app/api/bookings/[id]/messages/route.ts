@@ -7,6 +7,7 @@ import {
   jsonResponse,
   readJsonBody,
 } from '@/lib/http';
+import { consume, tooManyResponse } from '@/lib/rate-limit';
 import { readString, validateChatMessage } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
@@ -19,6 +20,11 @@ export async function POST(
 
   const account = await getSessionAccount();
   if (!account) return jsonResponse({ message: 'Sign in to message your ServMate.' }, 401);
+
+  // Message floods are the cheapest abuse a signed-in account can try; thirty
+  // a minute is far above any real conversation and well below a livelock.
+  const send = consume('messageSend', account.id);
+  if (!send.ok) return tooManyResponse(send.retryAfterSeconds);
 
   const body = await readJsonBody(request);
   if (!body) return jsonResponse(MALFORMED_BODY, 400);

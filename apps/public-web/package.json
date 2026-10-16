@@ -2,6 +2,7 @@
   "name": "servem-public-web",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "engines": {
     "node": ">=20.9.0"
   },
@@ -9,7 +10,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --test test/*.test.ts"
+    "test": "node --import ./test/register.mjs --test test/*.test.ts",
+    "test:e2e": "node test/e2e-live.mjs"
   },
   "dependencies": {
     "next": "16.4.0",

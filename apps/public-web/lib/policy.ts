@@ -47,6 +47,24 @@ export const OPEN_BOOKING_STATUSES: BookingStatus[] = [
   'completion_pending',
 ];
 
+/**
+ * Job statuses the customer may still edit or cancel.
+ *
+ * `offer_received` is included deliberately: receiving offers does not close a
+ * job, so the customer keeps control of their own description and budget until
+ * somebody is actually booked.
+ */
+export const EDITABLE_JOB_STATUSES: JobPostRecord['jobStatus'][] = [
+  'draft',
+  'open',
+  'offer_received',
+];
+
+/** Statuses in which work has been committed to a ServMate. */
+export function isJobBooked(status: JobPostRecord['jobStatus']): boolean {
+  return status === 'booked' || status === 'in_progress' || status === 'completion_pending' || status === 'completed';
+}
+
 /** Statuses in which the job is finished, withdrawn or otherwise closed. */
 export const CLOSED_JOB_STATUSES: JobPostRecord['jobStatus'][] = [
   'booked',
@@ -70,7 +88,9 @@ export type DenialReason =
   | 'job_closed'
   | 'not_owner'
   | 'not_a_participant'
-  | 'not_reviewable';
+  | 'not_reviewable'
+  | 'already_cancelled'
+  | 'invalid_state';
 
 export type Decision<T> = { allowed: true; value: T } | { allowed: false; reason: DenialReason };
 
@@ -359,6 +379,44 @@ export function canViewBooking(
   if (profile && booking.servmateProfileId === profile.id) return allow(booking);
 
   return deny('not_owner');
+}
+
+/**
+ * Whether a booking in this status may still be withdrawn by its customer (§4.7).
+ *
+ * The same table answers the question everywhere it is asked: `cancelBooking`
+ * refuses the move when it says no, and the Requests page uses it to decide
+ * whether to offer the button at all, so an action can never be offered where it
+ * would fail.
+ *
+ * It is deliberately `OPEN_BOOKING_STATUSES` — a request is live exactly while
+ * either party can still change what happens. Once the work is finished
+ * (`completed`) the ending is confirmation and then a review, and cancelling
+ * then would close the job and tell the ServMate their finished work was
+ * withdrawn; a booking frozen for a dispute (`disputed`) has its own resolution
+ * (§4.9), so it is not cancellable around it either.
+ */
+export function isBookingCancellable(status: BookingStatus): boolean {
+  return OPEN_BOOKING_STATUSES.includes(status);
+}
+
+/**
+ * Whether this account may withdraw this booking: its own, still live, and not
+ * already withdrawn. Ownership is checked from rows, so another account's
+ * booking is reported as absent rather than as uncancelable.
+ */
+export function canCancelBooking(
+  database: Database,
+  bookingId: string,
+  userId: string,
+): Decision<BookingRecord> {
+  const booking = database.bookings.find((row) => row.id === bookingId);
+  if (!booking) return deny('not_found');
+  if (booking.userId !== userId) return deny('not_owner');
+  if (booking.status === 'cancelled') return deny('already_cancelled');
+  if (!isBookingCancellable(booking.status)) return deny('invalid_state');
+
+  return allow(booking);
 }
 
 /**

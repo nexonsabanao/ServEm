@@ -72,6 +72,21 @@ export type SessionRecord = {
   expiresAt: string;
 };
 
+/**
+ * A single-use password recovery token.
+ *
+ * Only the SHA-256 digest of the token is stored, so the file on disk — or a
+ * copy of it — cannot be turned back into a working reset link. The row is
+ * deleted the moment it is redeemed, which is what makes it single-use.
+ */
+export type PasswordResetRecord = {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  expiresAt: string;
+  createdAt: string;
+};
+
 /* ---------------------------------------------------------------- *
  * ServMate profile, categories, coverage and listings (§10.2)
  * ---------------------------------------------------------------- */
@@ -341,6 +356,40 @@ export type MediaAssetRecord = {
 };
 
 /* ---------------------------------------------------------------- *
+ * Portfolio and work posts (§5.3)
+ * ---------------------------------------------------------------- */
+
+/**
+ * One example of a ServMate's work.
+ *
+ * `source` is the distinction §5.7 requires: work the platform watched complete
+ * through a booking is marked differently from work the ServMate published about
+ * themselves. Both are allowed on a profile; only one of them is evidence.
+ */
+export type PortfolioItemRecord = {
+  id: string;
+  servmateProfileId: string;
+  title: string;
+  description?: string;
+  mediaAssetId?: string;
+  source: 'self_published' | 'completed_booking';
+  /** Set for `completed_booking`, which is what makes it checkable. */
+  bookingId?: string;
+  displayOrder: number;
+  createdAt: string;
+};
+
+/** A short update a ServMate posts to their own profile (§5.3 section 4). */
+export type WorkPostRecord = {
+  id: string;
+  servmateProfileId: string;
+  body: string;
+  mediaAssetId?: string;
+  publicationStatus: 'published' | 'removed';
+  createdAt: string;
+};
+
+/* ---------------------------------------------------------------- *
  * Reviews (§10.9)
  * ---------------------------------------------------------------- */
 
@@ -377,6 +426,30 @@ export type NotificationRecord = {
 export type UserBlockRecord = {
   blockerUserId: string;
   blockedUserId: string;
+  createdAt: string;
+};
+
+/**
+ * What an operator did about a report or a dispute.
+ *
+ * An audit row rather than a field on the case, because a case can move more than
+ * once — claimed for review, then decided — and the sequence is the part that
+ * makes an outcome reviewable by a second person. `actorLabel` is deliberately a
+ * label and not a user id: the moderation console is unlocked with an operator
+ * credential, not an account (see `lib/moderation.ts`), so claiming a row belongs
+ * to an account would be a lie.
+ */
+export type ModerationActionRecord = {
+  id: string;
+  entityType: 'report' | 'dispute';
+  /** The report id, or the booking id for a dispute. */
+  entityId: string;
+  /** `reviewing`, `resolved`, `dismissed`, or `decided` for a dispute. */
+  action: string;
+  /** The outcome imposed: `completed` or `cancelled` on a dispute verdict. */
+  outcome?: string;
+  note?: string;
+  actorLabel: string;
   createdAt: string;
 };
 
@@ -420,11 +493,16 @@ export type Database = {
   conversationParticipants: ConversationParticipantRecord[];
   messages: MessageRecord[];
   mediaAssets: MediaAssetRecord[];
+  portfolioItems: PortfolioItemRecord[];
+  workPosts: WorkPostRecord[];
   reviews: ReviewRecord[];
   notifications: NotificationRecord[];
   userBlocks: UserBlockRecord[];
   userReports: UserReportRecord[];
+  /** Every operator action taken on a report or a dispute, in order. */
+  moderationActions: ModerationActionRecord[];
   pendingAuth: PendingAuthRecord[];
+  passwordResets: PasswordResetRecord[];
 };
 
 /**
@@ -435,6 +513,17 @@ export type Database = {
  * running site is serving.
  */
 function dataDir(): string {
+  return storeDataDir();
+}
+
+/**
+ * Where the store keeps its files.
+ *
+ * Exported so a sibling module can put private bytes beside the metadata they
+ * belong to — media files live under this directory too, which is what keeps
+ * them out of any statically served path.
+ */
+export function storeDataDir(): string {
   const override = process.env.SERVEM_DATA_DIR;
   return override ? path.resolve(override) : path.join(process.cwd(), '.data');
 }
@@ -456,11 +545,15 @@ export function emptyDatabase(): Database {
     conversationParticipants: [],
     messages: [],
     mediaAssets: [],
+    portfolioItems: [],
+    workPosts: [],
     reviews: [],
     notifications: [],
     userBlocks: [],
     userReports: [],
+    moderationActions: [],
     pendingAuth: [],
+    passwordResets: [],
   };
 }
 
@@ -509,11 +602,15 @@ async function readDatabase(): Promise<Database> {
       ),
       messages: rows<MessageRecord>(parsed.messages),
       mediaAssets: rows<MediaAssetRecord>(parsed.mediaAssets),
+      portfolioItems: rows<PortfolioItemRecord>(parsed.portfolioItems),
+      workPosts: rows<WorkPostRecord>(parsed.workPosts),
       reviews: rows<ReviewRecord>(parsed.reviews),
       notifications: rows<NotificationRecord>(parsed.notifications),
       userBlocks: rows<UserBlockRecord>(parsed.userBlocks),
       userReports: rows<UserReportRecord>(parsed.userReports),
+      moderationActions: rows<ModerationActionRecord>(parsed.moderationActions),
       pendingAuth: rows<PendingAuthRecord>(parsed.pendingAuth),
+      passwordResets: rows<PasswordResetRecord>(parsed.passwordResets),
     };
   } catch {
     stored = emptyDatabase();

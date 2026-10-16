@@ -273,6 +273,51 @@ export function LocationIcon() {
 }
 
 
+/** A padlock — sign-in and security. */
+export function LockIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+      <rect x="4.4" y="8.6" width="11.2" height="7.6" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M6.9 8.6V6.8a3.1 3.1 0 0 1 6.2 0v1.8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** A shield — privacy and what is kept about you. */
+export function ShieldIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+      <path
+        d="M10 2.8 16 5v4.6c0 3.4-2.4 6.2-6 7.6-3.6-1.4-6-4.2-6-7.6V5Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** A flag — something reported. */
+export function FlagIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+      <path d="M5.4 3.2v13.6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M5.4 4.2h8.8l-1.7 3 1.7 3H5.4Z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** A phone — the device you are holding. */
+export function DeviceIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+      <rect x="5.4" y="2.8" width="9.2" height="14.4" rx="1.8" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M8.8 15h2.4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function ChevronDownIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">

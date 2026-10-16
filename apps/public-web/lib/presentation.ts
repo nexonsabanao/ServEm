@@ -13,7 +13,33 @@
  * import the tones and gradients directly.
  */
 
-import type { BookingStatus } from './store';
+import type { BookingStatus, JobStatus, OfferStatus } from './store';
+
+/**
+ * The reasons a report may cite, in the order they are offered.
+ *
+ * Declared with the other shared vocabularies rather than beside the reporting
+ * rules, because the client form and the server validation both read this one
+ * list: a reason the API accepts but the form never offers — or the reverse — is
+ * a mismatch nobody would notice.
+ */
+export const REPORT_REASONS = [
+  'spam',
+  'harassment',
+  'misrepresentation',
+  'unsafe',
+  'other',
+] as const;
+
+export type ReportReason = (typeof REPORT_REASONS)[number];
+
+export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
+  spam: 'Spam or advertising',
+  harassment: 'Harassment or abuse',
+  misrepresentation: 'Misleading or false',
+  unsafe: 'Unsafe or illegal',
+  other: 'Something else',
+};
 
 export type Gradient = {
   /** Two-stop linear gradient used as a thumbnail / avatar background. */
@@ -103,6 +129,47 @@ export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
   completed: 'Completed',
   cancelled: 'Withdrawn',
   disputed: 'Under review',
+};
+
+/** The same rule for a job post's own status, in the customer's words. */
+export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
+  draft: 'Draft',
+  open: 'Open',
+  offer_received: 'Offers received',
+  booked: 'Booked',
+  in_progress: 'In progress',
+  completion_pending: 'Finishing up',
+  completed: 'Completed',
+  cancelled: 'Closed',
+  expired: 'Expired',
+};
+
+/** And for an offer, from both sides of the table. */
+export const OFFER_STATUS_LABELS: Record<OfferStatus, string> = {
+  pending: 'On the table',
+  accepted: 'Accepted',
+  rejected: 'Passed on',
+  withdrawn: 'Withdrawn',
+  expired: 'Expired',
+  category_changed: 'No longer eligible',
+};
+
+/**
+ * Where a filed report stands, in the reporter's words.
+ *
+ * The reporter is told what happened to their report, not which queue row it
+ * occupies: "Waiting for review" and "Being reviewed" are both true statements
+ * about an open record, and neither one guesses at an outcome the moderator has
+ * not reached yet.
+ */
+export const REPORT_STATUS_LABELS: Record<
+  'open' | 'reviewing' | 'resolved' | 'dismissed',
+  string
+> = {
+  open: 'Waiting for review',
+  reviewing: 'Being reviewed',
+  resolved: 'Resolved',
+  dismissed: 'Closed, no action',
 };
 
 export function gradientStyle(gradient: Gradient): { backgroundImage: string } {

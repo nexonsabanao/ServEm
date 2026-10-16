@@ -8,17 +8,16 @@
    the counter.
    ========================================================================= */
 
-.sm { min-height: 100dvh; background: var(--paper); color: var(--ink); font-family: var(--body); }
+/* The console lives inside the app shell, so it has no frame of its own — only a
+   toolbar that says whose workbench this is. */
+.sm { display: grid; gap: 18px; background: transparent; color: var(--ink); font-family: var(--body); }
 .sm a { color: inherit; text-decoration: none; }
 .sm button { color: inherit; cursor: pointer; font-family: inherit; }
 
-/* ---------- Provider bar ---------- */
-.sm-bar { position: sticky; top: 0; z-index: 40; background: var(--card); border-bottom: 1px solid var(--line); }
-.sm-bar-inner { max-width: 1240px; margin-inline: auto; display: flex; align-items: center; gap: 16px; padding: 11px 22px; }
-.sm-brand { display: inline-flex; align-items: center; gap: 10px; }
-.sm-brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: var(--ink); color: var(--paper); font-family: var(--display); font-weight: 700; font-size: 19px; }
-.sm-brand-word { font-family: var(--display); font-size: 22px; font-weight: 600; letter-spacing: -0.03em; }
-.sm-mode { padding: 4px 10px; border: 1px solid rgba(109, 129, 150, 0.4); border-radius: 999px; background: var(--slate-wash); color: var(--slate-deep); font-family: var(--utility); font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+/* ---------- Console toolbar ---------- */
+.sm-bar { background: var(--card); border: 1px solid var(--line); border-radius: var(--m-radius-lg); }
+.sm-bar-inner { display: flex; align-items: center; gap: 16px; padding: 11px 16px; }
+.sm-mode { margin: 0; color: var(--ink); font-family: var(--display); font-size: 19px; font-weight: 600; letter-spacing: -0.02em; }
 .sm-bar-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
 .sm-preview-pick select { min-height: 44px; max-width: 250px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper-sunk); color: var(--ink); font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
 
@@ -30,27 +29,10 @@
 .sm-toggle[aria-pressed='true'] .sm-toggle-track { background: var(--slate); }
 .sm-toggle[aria-pressed='true'] .sm-toggle-thumb { transform: translateX(14px); }
 
-.sm-account { position: relative; }
-.sm-account-trigger { display: inline-flex; min-height: 44px; align-items: center; gap: 9px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
-.sm-account-trigger:hover { background: var(--paper-sunk); }
-.sm-account-avatar { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--ink); color: var(--paper); font-family: var(--display); font-weight: 700; font-size: 14px; }
-.sm-account-name { font-size: 13px; font-weight: 600; }
-.sm-account-caret { display: grid; place-items: center; color: var(--ink-soft); }
-.sm-account-caret svg { width: 14px; height: 14px; }
-.sm-account-menu { position: absolute; right: 0; top: 50px; z-index: 45; display: grid; gap: 2px; min-width: 248px; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); box-shadow: 0 18px 44px rgba(74, 74, 74, 0.14); }
-.sm-account-id { display: grid; gap: 3px; margin-bottom: 6px; padding: 4px 10px 10px; border-bottom: 1px solid var(--line); }
-.sm-account-id strong { font-family: var(--display); font-size: 13.5px; }
-.sm-account-id span { color: var(--ink-soft); font-size: 11.5px; }
-.sm-account-menu a { display: flex; min-height: 44px; align-items: center; padding: 9px 10px; border-radius: 8px; font-size: 13.5px; font-weight: 500; }
-.sm-account-menu a:hover { background: var(--paper-sunk); }
-.sm-account-signout { margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); }
-.sm .sm-signout { width: 100%; min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--slate-deep); font-size: 13px; font-weight: 700; }
-.sm .sm-signout:hover { border-color: var(--slate); }
-
 /* ---------- Body ---------- */
-.sm-body { max-width: 1240px; margin-inline: auto; display: grid; gap: 18px; padding: 22px; }
+.sm-body { display: grid; gap: 18px; }
 
-/* Identity — the one dark panel in the workbench, matching the account header. */
+/* Identity — the one dark panel in the console, and the only screen showing it. */
 .sm-identity { display: flex; align-items: center; gap: 16px; padding: 22px 24px; border-radius: 14px; background: linear-gradient(120deg, #4a4a4a, #52667b 70%, #6d8196); color: var(--paper); box-shadow: 0 1px 2px rgba(74, 74, 74, 0.05), 0 10px 28px rgba(74, 74, 74, 0.12); }
 .sm-identity-avatar { display: grid; place-items: center; width: 64px; height: 64px; flex: 0 0 auto; border-radius: 50%; border: 2px solid rgba(246, 245, 241, 0.4); background: rgba(246, 245, 241, 0.16); font-family: var(--display); font-size: 28px; font-weight: 700; }
 .sm-identity-copy { display: grid; gap: 4px; min-width: 0; }

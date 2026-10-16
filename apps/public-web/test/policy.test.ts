@@ -96,11 +96,15 @@ function snapshot(over: Partial<Database> = {}): Database {
     conversationParticipants: [],
     messages: [],
     mediaAssets: [],
+    portfolioItems: [],
+    workPosts: [],
     reviews: [],
     notifications: [],
     userBlocks: [],
     userReports: [],
+    moderationActions: [],
     pendingAuth: [],
+    passwordResets: [],
     ...over,
   };
 }

@@ -7,6 +7,7 @@ import {
   jsonResponse,
   readJsonBody,
 } from '@/lib/http';
+import { clientAddress, consume, tooManyResponse } from '@/lib/rate-limit';
 import { readString } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,18 @@ export async function POST(request: Request) {
   if (Object.keys(errors).length > 0) {
     return jsonResponse({ message: 'Check the highlighted fields.', errors }, 400);
   }
+
+  /*
+   * Two counters before the hash is even computed: one per address+email pair,
+   * which stops a stuffing run against one account, and one per address, which
+   * stops a spread run across many accounts from one source. Both answer the
+   * same way — an attacker cannot use the refusal to learn which part tripped.
+   */
+  const address = clientAddress(request);
+  const byPair = consume('signin', `${address}:${email.trim().toLowerCase()}`);
+  if (!byPair.ok) return tooManyResponse(byPair.retryAfterSeconds);
+  const byAddress = consume('signinPerAddress', address);
+  if (!byAddress.ok) return tooManyResponse(byAddress.retryAfterSeconds);
 
   const result = await authenticateUser(email, password);
   if (!result) {

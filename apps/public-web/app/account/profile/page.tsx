@@ -5,7 +5,6 @@ import { LocationIcon } from '@/app/components/icons';
 import { getSessionProfile } from '@/lib/auth';
 import { TONE_SWATCHES } from '@/lib/profile';
 import { gradientStyle } from '@/lib/feed-data';
-import { formatDay } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +24,8 @@ export default async function ProfilePage() {
     {
       key: 'password',
       label: 'Email and password',
-      detail: profile.email,
+      // The address itself lives in Settings; this only reports the method.
+      detail: 'The address on this account',
       connected: profile.hasPassword,
     },
     {
@@ -48,8 +48,7 @@ export default async function ProfilePage() {
     <div className="account-page">
       <section className="account-section" aria-labelledby="preview-title">
         <div className="account-section-head">
-          <h2 id="preview-title">What ServMates see</h2>
-          <span className="account-section-note">Member since {formatDay(profile.createdAt)}</span>
+          <h1 id="preview-title">What ServMates see</h1>
         </div>
         <div className="identity-panel">
           <span
@@ -81,11 +80,7 @@ export default async function ProfilePage() {
         <div className="account-section-head">
           <h2 id="edit-title">Edit profile</h2>
         </div>
-        <ProfileEditor
-          initialName={profile.name}
-          initialProfile={profile.profile}
-          email={profile.email}
-        />
+        <ProfileEditor initialName={profile.name} initialProfile={profile.profile} />
       </section>
 
       <section className="account-section" aria-labelledby="methods-title">
@@ -93,7 +88,7 @@ export default async function ProfilePage() {
           <h2 id="methods-title">How you sign in</h2>
         </div>
         <p className="account-section-lede">
-          A method is connected once you have used it to sign in to this account.
+          A method is connected once you have signed in with it.
         </p>
         <ul className="method-list">
           {methods.map((method) => (
@@ -111,16 +106,9 @@ export default async function ProfilePage() {
           <h2 id="session-title">This session</h2>
         </div>
         <div className="session-panel">
-          <p>
-            Signing out ends this session on this browser. Your requests and account stay
-            as they are.
-          </p>
+          <p>Your requests and account are untouched.</p>
           <SignOutButton className="button button-secondary" />
         </div>
-        <p className="account-dev-note">
-          Local development build. Accounts, sessions and requests are stored on this machine
-          only, in a single unencrypted file — not a production datastore.
-        </p>
       </section>
     </div>
   );

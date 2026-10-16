@@ -1,11 +1,8 @@
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
-import { AccountTabs } from '@/app/components/feed/account-tabs';
 import { AppShell } from '@/app/components/feed/app-shell';
-import { firstLetter } from '@/lib/feed-data';
 import { getSessionProfile } from '@/lib/auth';
 import { listBookings, summariseBookings } from '@/lib/bookings';
-import { formatMonth } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,9 +11,12 @@ export const metadata = {
 };
 
 /**
- * The account area keeps one compact identity header and section navigation
- * shared across overview, messages, requests, and profile settings.
- * Signed-out visitors are sent to the storefront to sign in.
+ * The account area's frame.
+ *
+ * Nothing here repeats who you are: the shared shell already carries the
+ * account, and a name, an email and a join date on top of every screen was
+ * noise that pushed the actual content down. The one place those facts belong is
+ * Settings, and that is the only place that shows them.
  */
 export default async function AccountLayout({ children }: Readonly<{ children: ReactNode }>) {
   const profile = await getSessionProfile();
@@ -26,21 +26,8 @@ export default async function AccountLayout({ children }: Readonly<{ children: R
   const summary = summariseBookings(bookings);
 
   return (
-    <AppShell account={{ name: profile.name, email: profile.email }} requestCount={summary.total}>
-      <div className="acct">
-        <section className="acct-profile" aria-label="Your account">
-          <span className="acct-avatar" aria-hidden="true">{firstLetter(profile.name)}</span>
-          <div className="acct-id">
-            <h1>{profile.name}</h1>
-            <p className="acct-email">{profile.email}</p>
-            <p className="acct-since">Member since {formatMonth(profile.createdAt)}</p>
-          </div>
-        </section>
-        <AccountTabs />
-        {children}
-      </div>
+    <AppShell account={{ name: profile.name }} requestCount={summary.total}>
+      {children}
     </AppShell>
   );
 }
-
-

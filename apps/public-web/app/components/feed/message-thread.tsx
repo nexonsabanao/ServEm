@@ -88,15 +88,13 @@ export function MessageThread({ conversation }: { conversation: Conversation }) 
           {conversation.providerName.slice(0, 1).toLocaleUpperCase()}
         </span>
         <div>
-          <p className="thread-counterpart">{conversation.providerName}</p>
-          <h2 id="thread-title">{conversation.serviceTitle}</h2>
-          <p className="thread-reference">{conversation.reference}{conversation.area ? ` · ${conversation.area}` : ''}</p>
+          <h2 id="thread-title">{conversation.providerName}</h2>
+          <p className="thread-counterpart">
+            {conversation.serviceTitle} · {conversation.reference}
+            {conversation.area ? ` · ${conversation.area}` : ''}
+          </p>
         </div>
       </header>
-
-      <p className="message-preview-note">
-        Messages are saved to this local customer account. ServMate replies will appear when provider messaging is connected.
-      </p>
 
       <ol className="thread-history" aria-label="Conversation messages" aria-live="polite">
         {messages.map((message, index) => (
@@ -112,14 +110,14 @@ export function MessageThread({ conversation }: { conversation: Conversation }) 
 
       {OPEN_BOOKING_STATUSES.includes(conversation.status) ? (
         <form className="thread-composer" onSubmit={(event) => void sendMessage(event)}>
-          <label htmlFor="thread-message">Message your ServMate</label>
+          <label className="visually-hidden" htmlFor="thread-message">Message your ServMate</label>
           <textarea
             id="thread-message"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             maxLength={MESSAGE_LIMIT}
             rows={3}
-            placeholder="Ask a question or share more details…"
+            placeholder="Message your ServMate…"
             aria-describedby={error ? 'thread-error thread-count' : 'thread-count'}
           />
           <div className="thread-composer-foot">
