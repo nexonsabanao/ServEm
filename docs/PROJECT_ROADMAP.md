@@ -64,6 +64,9 @@ Profiles carry `verificationStatus` and the UI never contradicts it. A verificat
 evidence upload, a reviewer role, and an audit trail — and, until it exists, the badge stays
 absent rather than decorative.
 
+**Blocker:** a KYC provider (selfie + PH ID), a paid contract, and a retention agreement for the
+documents. Choosing one is the user's decision, not a codebase one.
+
 ## 6. Counteroffers
 
 Offers already carry `revision`. A counteroffer should create a new revision rather than
@@ -79,9 +82,11 @@ existing schedule checks.
 
 Per-bucket, in-process limits now guard sign-in, sign-up, recovery, message sends, reports,
 uploads, job posts and offer submissions (`lib/rate-limit.ts`), answering 429 with
-`Retry-After`, and the reporter reads their own list at `/account/reports`. What remains is the
-counter shared across processes — an edge or Redis limiter — plus extending limits to the
-remaining mutation routes once traffic shows where they bite.
+`Retry-After`. What remains is the counter shared across processes — an edge or Redis limiter —
+plus extending limits to the remaining mutation routes once traffic shows where they bite.
+
+**Blocked on §1:** the directory's order puts the durable store first, and a shared limiter
+before the database would be a second source of truth to migrate.
 
 ## 9. Distance-aware discovery
 
@@ -94,6 +99,16 @@ substitute for eligibility.
 Last, and only with approved provider integration, settlement rules and compliance review.
 Until then the booking records the agreed amount and says so, which is more useful than a
 disabled checkout button.
+
+**Blocker:** a PayMongo merchant account, its keys and a decision on the refund model. The
+directory's shape is already recorded: PaymentIntent lifecycle, signed webhooks, idempotency,
+`provider_webhook_events`, and no escrow claim. Do not implement signature verification from
+memory — confirm the provider's contract first.
+
+## 11. A scheduler for the retention purge
+
+Account deletion is live, but `purgeDueAccounts` runs only when the delete route is called. A
+deployment needs a nightly invocation; the function is the seam.
 
 ---
 

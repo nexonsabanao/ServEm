@@ -4,25 +4,172 @@
  * ones cannot, then compare and accept.
  *
  * This is the half of the proof that `npm test` cannot give: it drives the real
- * HTTP surface of a running server, with real sessions in cookies. Run it in two
- * steps:
+ * HTTP surface of a running server, with real sessions in cookies. Exits
+ * non-zero if any check fails.
  *
- *   SERVEM_DATA_DIR=$(mktemp -d) npm run dev -- --port 3100   # terminal one
- *   npm run test:e2e                                          # terminal two
+ * `npm run test:e2e` is self-contained. It starts its own dev server on a free
+ * loopback port, in its own build directory, with SERVEM_DATA_DIR pointed at a
+ * fresh scratch directory, runs every check against it, then stops the server
+ * and removes the directory. Both halves of that isolation are the point:
  *
- * Pointing SERVEM_DATA_DIR at a scratch directory keeps the throwaway accounts
- * this script signs up out of the development store. Exits non-zero if any check
- * fails.
+ *  - the throwaway accounts this script signs up land in the scratch directory,
+ *    so a run never writes the development store (`.data/servem.json`) and the
+ *    roster the console offers stops growing a provider per run;
+ *  - rate limits are counted per process, so every run begins with every window
+ *    empty and back-to-back runs are no longer refused for having run before.
  *
- * The suite itself spends quota: six sign-ups and up to eight recovery
- * requests per run. The shipped caps allow about six runs per hour against one
- * server. For a long test session start the dev server with looser buckets on
- * those two — but leave the per-address+email recovery pair at its shipped
- * quota, which is what the 429 check below trips:
+ * To drive a server that is already up instead — a deployment, or a manual
+ * `npm run dev` session — set BASE and the data directory and the limits are
+ * whatever that server was started with:
+ *
+ *   BASE=http://127.0.0.1:3100 npm run test:e2e
+ *
+ * Against such a long-lived server the suite still spends its quota there: six
+ * sign-ups and up to eight recovery requests per run, and the shipped caps allow
+ * about six runs per hour. The deliberate "hammering one address eventually
+ * answers 429" check below needs quota left to exhaust, so for a long manual
+ * session start the server with looser buckets on those two — but leave the
+ * per-address+email recovery pair at its shipped quota, which is what that check
+ * trips:
  *
  *   SERVEM_RATE_LIMIT_SIGNUP=200/60 SERVEM_RATE_LIMIT_PASSWORDRESETPERADDRESS=500/60
  */
-const BASE = process.env.BASE ?? 'http://127.0.0.1:3100';
+import { spawn } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import net from 'node:net';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/** A loopback port nothing is listening on, so two runs never collide. */
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.unref();
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', () => {
+      const address = probe.address();
+      const port = typeof address === 'object' && address ? address.port : 0;
+      probe.close(() => (port ? resolve(port) : reject(new Error('no free port'))));
+    });
+  });
+}
+
+/**
+ * The server this run talks to: its own dev server, on its own port, with its
+ * own data directory. `BASE` set means an external server, which this neither
+ * starts nor stops — everything below then behaves as it always did.
+ */
+async function startRunServer() {
+  if (process.env.BASE) return { base: process.env.BASE, dataDir: null, output: () => '', stop: async () => {} };
+
+  const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const dataDir = mkdtempSync(path.join(tmpdir(), 'servem-e2e-'));
+  const port = await freePort();
+  const base = `http://127.0.0.1:${port}`;
+
+  /*
+   * Next rewrites `next-env.d.ts` and `tsconfig.json` for whichever distDir it
+   * starts with, so a run must not leave the project pointing at its own build
+   * directory: both are put back to their pre-run bytes when it stops.
+   */
+  const generated = ['next-env.d.ts', 'tsconfig.json'].map((file) => {
+    const target = path.join(appRoot, file);
+    return { target, content: readFileSync(target, 'utf8') };
+  });
+  const restoreGenerated = () => {
+    for (const entry of generated) writeFileSync(entry.target, entry.content);
+  };
+
+  let collected = '';
+  const capture = (chunk) => {
+    collected = `${collected}${chunk.toString()}`.slice(-64_000);
+  };
+
+  const child = spawn(
+    process.execPath,
+    [path.join(appRoot, 'node_modules/next/dist/bin/next'), 'dev', '--hostname', '127.0.0.1', '--port', String(port)],
+    {
+      cwd: appRoot,
+      env: {
+        ...process.env,
+        SERVEM_DATA_DIR: dataDir,
+        // Next locks `<distDir>/dev/lock`, so the run's server needs its own
+        // build directory to exist beside a dev server that is already up.
+        SERVEM_DIST_DIR: '.next-e2e',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+      // Its own process group, so stopping it takes its workers with it.
+      detached: true,
+    },
+  );
+  child.stdout.on('data', capture);
+  child.stderr.on('data', capture);
+
+  const stop = async () => {
+    if (child.exitCode !== null) {
+      restoreGenerated();
+      return;
+    }
+    try {
+      process.kill(-child.pid, 'SIGTERM');
+    } catch {
+      child.kill('SIGTERM');
+    }
+    await new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        try {
+          process.kill(-child.pid, 'SIGKILL');
+        } catch {
+          /* already gone */
+        }
+        resolve();
+      }, 5000);
+      child.once('exit', () => {
+        clearTimeout(timer);
+        resolve();
+      });
+    });
+    restoreGenerated();
+  };
+
+  // Whatever happens to this script, the server does not outlive it and the
+  // project files are left as they were found.
+  process.once('exit', () => {
+    if (child.exitCode === null) {
+      try {
+        process.kill(-child.pid, 'SIGTERM');
+      } catch {
+        /* already gone */
+      }
+    }
+    restoreGenerated();
+  });
+
+  const deadline = Date.now() + 120_000;
+  let last = 'no answer yet';
+  for (;;) {
+    if (child.exitCode !== null) {
+      throw new Error(`the dev server exited with code ${child.exitCode}\n${collected}`);
+    }
+    try {
+      const response = await fetch(`${base}/`, { redirect: 'manual' });
+      last = `status ${response.status}`;
+      if (response.status > 0 && response.status < 500) break;
+    } catch (error) {
+      last = String(error);
+    }
+    if (Date.now() > deadline) {
+      throw new Error(`the dev server did not answer within 120s (${last})\n${collected}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  return { base, dataDir, output: () => collected, stop };
+}
+
+const run = await startRunServer();
+const BASE = run.base;
 
 let failures = 0;
 function check(name, condition, detail) {
@@ -1410,5 +1557,235 @@ if (!moderationOpen) {
   );
 }
 
-console.log(failures === 0 ? '\nall end-to-end checks passed' : `\n${failures} CHECK(S) FAILED`);
-process.exit(failures === 0 ? 0 : 1);
+/* ---------------------------------------------------------------- *
+ * 13. The launch-facing surfaces: headers, search-as-mode, shortlist,
+ *     installability and the right to delete.
+ * ---------------------------------------------------------------- */
+{
+  const home = await fetch(`${BASE}/`, { redirect: 'manual' });
+  const csp = home.headers.get('content-security-policy') ?? '';
+  check(
+    'every response carries a fail-closed content security policy',
+    csp.includes("default-src 'self'") &&
+      csp.includes("object-src 'none'") &&
+      csp.includes("frame-ancestors 'none'"),
+    csp,
+  );
+  check('the app cannot be framed by another site', home.headers.get('x-frame-options') === 'DENY');
+  check('responses refuse MIME sniffing', home.headers.get('x-content-type-options') === 'nosniff');
+  check(
+    'cross-origin referrers are trimmed to the origin',
+    home.headers.get('referrer-policy') === 'strict-origin-when-cross-origin',
+  );
+  check(
+    'camera, microphone, location and payment are off by default',
+    (home.headers.get('permissions-policy') ?? '').includes('camera=()') &&
+      (home.headers.get('permissions-policy') ?? '').includes('geolocation=()'),
+    home.headers.get('permissions-policy'),
+  );
+  check(
+    'HSTS is not sent over local HTTP',
+    home.headers.get('strict-transport-security') === null,
+    home.headers.get('strict-transport-security'),
+  );
+
+  const suggest = await fetch(`${BASE}/api/search/suggest?q=clean`);
+  const suggestion = await suggest.json().catch(() => null);
+  check(
+    'search suggestions answer without a session',
+    suggest.status === 200 &&
+      Array.isArray(suggestion?.services) &&
+      suggestion.services.length > 0 &&
+      Array.isArray(suggestion?.providers),
+    suggestion,
+  );
+  check(
+    'suggestions are never cached',
+    String(suggest.headers.get('cache-control')).includes('no-store'),
+    suggest.headers.get('cache-control'),
+  );
+  const shortQuery = await fetch(`${BASE}/api/search/suggest?q=c`);
+  check(
+    'a one-character query is not a search',
+    (await shortQuery.json().catch(() => null))?.services?.length === 0,
+  );
+
+  const manifest = await fetch(`${BASE}/manifest.webmanifest`);
+  const manifestBody = await manifest.json().catch(() => null);
+  check(
+    'the app declares an installable manifest',
+    manifest.status === 200 &&
+      manifestBody?.short_name === 'ServEm' &&
+      (manifestBody?.icons ?? []).length >= 3 &&
+      manifestBody.display === 'standalone',
+    manifestBody,
+  );
+  const worker = await fetch(`${BASE}/sw.js`);
+  check(
+    'the offline worker is served as JavaScript',
+    worker.status === 200 && String(worker.headers.get('content-type')).includes('javascript'),
+    worker.headers.get('content-type'),
+  );
+  const offline = await pageStatus('/offline', null);
+  check(
+    'the offline document renders without a session',
+    offline.status === 200 && offline.text.includes('You’re offline'),
+    offline.status,
+  );
+
+  const searchPage = await pageStatus('/search?q=clean', customer);
+  check(
+    'search renders inside the frame with the top-bar field on the page',
+    searchPage.status === 200 &&
+      searchPage.text.includes('id="app-search"') &&
+      !searchPage.text.includes('is-search-view'),
+    searchPage.status,
+  );
+  const shortlistPage = await pageStatus('/shortlist', customer);
+  check(
+    'the shortlist screen renders',
+    shortlistPage.status === 200 && shortlistPage.text.includes('Shortlist'),
+    shortlistPage.status,
+  );
+  /*
+   * A listing is a product page before it is a request: the card links to it,
+   * and it has to open for the visitor who has not signed in yet — that is the
+   * whole point of putting it outside the signed-in layout.
+   */
+  const storefront = await pageStatus('/', null);
+  check(
+    'a service card links to the listing\u2019s own page',
+    storefront.status === 200 && storefront.text.includes(`/services/${listingId}`),
+    storefront.status,
+  );
+  const servicePage = await pageStatus(`/services/${listingId}`, null);
+  check(
+    'a listing page opens without a session and carries the listing\u2019s description',
+    servicePage.status === 200 &&
+      servicePage.text.includes('Deep clean \u00b7 two-bedroom condo') &&
+      servicePage.text.includes('Kitchen, bathrooms, living room and bedrooms.'),
+    servicePage.status,
+  );
+  const missingService = await pageStatus('/services/does-not-exist', null);
+  check(
+    'an unknown listing renders no listing page',
+    (missingService.status === 404 ||
+      missingService.text.includes('could not be found')) &&
+      !missingService.text.includes('Similar services'),
+    missingService.status,
+  );
+
+  const signedOutShortlist = await pageStatus('/shortlist', null);
+  // A streamed page answers 200 and carries the redirect the app applies on
+  // arrival, so the guard is proved by the destination and by the absence of
+  // the board, not by the status alone (see PROJECT_STATUS limitation 6).
+  check(
+    'the shortlist is behind the session guard',
+    signedOutShortlist.status === 307 ||
+      signedOutShortlist.status === 302 ||
+      (signedOutShortlist.text.includes('signin=1') &&
+        !signedOutShortlist.text.includes('shortlist-board')),
+    signedOutShortlist.status,
+  );
+}
+
+{
+  const doomed = newJar();
+  const doomEmail = `erase-${stamp}@e2e.test`;
+  await signup(doomed, 'Erase Me', doomEmail);
+
+  const preview = await call(doomed, 'GET', '/api/account');
+  check(
+    'an account can read what deleting it would do',
+    preview.status === 200 && preview.body?.canDelete === true && preview.body?.hasPassword === true,
+    preview.body,
+  );
+
+  check(
+    'deletion needs the confirmation word',
+    (await call(doomed, 'DELETE', '/api/account', {})).status === 400,
+  );
+  check(
+    'deletion checks the current password',
+    (await call(doomed, 'DELETE', '/api/account', {
+      confirmation: 'DELETE',
+      password: 'not-the-password',
+    })).status === 403,
+  );
+
+  const busy = newJar();
+  await signup(busy, 'Busy Account', `busy-${stamp}@e2e.test`);
+  const busyJob = await call(busy, 'POST', '/api/jobs', {
+    title: 'Work in flight',
+    description: 'A job that is still open, so its owner cannot be erased underneath it.',
+    categoryId: 'cleaning',
+    pricingModel: 'fixed',
+    budgetCentavos: 120000,
+    locationCity: 'Bacoor',
+    scheduleFlexible: true,
+  });
+  await call(busy, 'POST', `/api/jobs/${busyJob.body?.job?.id}/publish`);
+  const refused = await call(busy, 'DELETE', '/api/account', {
+    confirmation: 'DELETE',
+    password: 'e2e-password-123',
+  });
+  check(
+    'live work refuses deletion and names what is live',
+    refused.status === 409 && (refused.body?.blockers ?? []).length >= 1,
+    refused.body,
+  );
+  check(
+    'the refused account is untouched',
+    (await call(busy, 'GET', '/api/account')).status === 200,
+  );
+
+  const signedOutDelete = await fetch(`${BASE}/api/account`, {
+    method: 'DELETE',
+    headers: { Origin: BASE, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ confirmation: 'DELETE' }),
+  });
+  check('a signed-out caller cannot delete an account', signedOutDelete.status === 401);
+
+  const deleted = await call(doomed, 'DELETE', '/api/account', {
+    confirmation: 'DELETE',
+    password: 'e2e-password-123',
+  });
+  check(
+    'an account with no live work is deleted, with a purge date',
+    deleted.status === 200 &&
+      deleted.body?.ok === true &&
+      typeof deleted.body?.purgeAfter === 'string',
+    deleted.body,
+  );
+  check(
+    'its session is ended with it',
+    (await call(doomed, 'GET', '/api/account/export')).status === 401,
+  );
+  const again = await call(newJar(), 'POST', '/api/auth/signup', {
+    name: 'Erase Again',
+    email: doomEmail,
+    password: 'e2e-password-123',
+  });
+  check(
+    'the old address is free to register a new account',
+    again.status === 200 || again.status === 201,
+    again.status,
+  );
+}
+
+const passed = failures === 0;
+console.log(passed ? '\nall end-to-end checks passed' : `\n${failures} CHECK(S) FAILED`);
+
+// Tear the run's own server down, and the scratch data it wrote, keeping both
+// only when somebody needs to read them afterwards.
+await run.stop();
+if (run.dataDir) {
+  if (passed) {
+    rmSync(run.dataDir, { recursive: true, force: true });
+  } else {
+    console.log(`\nserver output kept with its data at ${run.dataDir}`);
+    console.log(run.output());
+  }
+}
+
+process.exit(passed ? 0 : 1);

@@ -58,6 +58,14 @@ export const RATE_LIMITS = {
   mediaUpload: { limit: 30, windowMs: 60 * 60_000 },
   /** Job posts started, per signed-in account. */
   jobCreate: { limit: 10, windowMs: 60 * 60_000 },
+  /**
+   * Account-deletion attempts, per signed-in account.
+   *
+   * The route takes the current password, so it is a password-checking surface
+   * and needs the same ceiling a sign-in attempt has. Ten an hour is generous
+   * for a person confirming a decision, and useless for guessing.
+   */
+  accountDelete: { limit: 10, windowMs: 60 * 60_000 },
   /** Offers submitted, per signed-in account. */
   offerSubmit: { limit: 30, windowMs: 60 * 60_000 },
   /**

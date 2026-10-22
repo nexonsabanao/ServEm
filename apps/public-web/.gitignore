@@ -1,5 +1,8 @@
 node_modules/
 .next/
+.next-e2e/
+.next-purge-check/
+.next-verify/
 out/
 .env.local
 .env.*.local

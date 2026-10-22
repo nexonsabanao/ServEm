@@ -9,7 +9,7 @@ The tests exist to protect three properties that are easy to break and expensive
 
 ```
 npm test          node --import ./test/register.mjs --test test/*.test.ts
-npm run test:e2e  node test/e2e-live.mjs          # against a running server
+npm run test:e2e  node test/e2e-live.mjs          # starts its own isolated server
 npm run build     next build                      # type and route validation
 ```
 
@@ -37,7 +37,8 @@ run concurrently.
 | `provider-console.test.ts` | the console | a completed-booking portfolio claim is verified server-side; a provider cannot set `verificationStatus` |
 | `search.test.ts` | the search ranker | a term that starts a field beats one that merely contains it; equally good answers order by rating rather than input order; an empty query searches for nothing and no match returns nothing |
 | `moderation.test.ts` | the operator console | every way of not being an operator is refused identically; a verdict needs a reason, moves the booking and notifies both parties; the audit row is written in the same transaction |
-| `e2e-live.mjs` | the whole thing over HTTP | sign-up → job → media → feed → offer → accept → start → finish → confirm → review, plus the signed-out `401`, the foreign-origin `403`, the `429` with `Retry-After`, and the moderation console's refusals on every run with its privileged path when the operator token is supplied |
+| `account-deletion.test.ts` | erasure and retention | live work refuses deletion and names it; the password is checked; a finished booking keeps a title snapshot after its job row goes; the tombstone cannot be signed into and the purge detaches rather than deletes |
+| `e2e-live.mjs` | the whole thing over HTTP | sign-up → job → media → feed → offer → accept → start → finish → confirm → review, plus the signed-out `401`, the foreign-origin `403`, the `429` with `Retry-After`, the header set, search suggestions, the manifest and offline document, and the moderation console's refusals on every run with its privileged path when the operator token is supplied |
 
 ## What the tests are written to assert
 
@@ -56,7 +57,13 @@ exists.
 
 **The e2e script drives the real server.** `test/e2e-live.mjs` starts from the running app, creates
 its own account, and walks the journey through the same HTTP surface a browser uses. It checks
-status codes and JSON shape rather than pixels, so a UI restyle cannot make it pass or fail.
+status codes, JSON shape and, for the launch surfaces, response headers and the presence of the
+controls a person needs — not pixels, so a restyle cannot make it pass or fail.
+
+**The destructive path is exercised on a throwaway account.** Deletion is tested by creating an
+account in the run's scratch store, asserting the refusals, deleting it, and proving its session and
+credentials are gone. The run's own data directory is removed afterwards, so no test can erase a
+developer's account.
 
 ## Deliberately not tested
 
@@ -75,10 +82,10 @@ cd apps/public-web
 npm test                       # unit and integration
 npm run build                  # types and routes compile
 
-# then, in another shell — the moderation checks exercise their privileged half
-# only when both the server and this command hold the same operator credential:
-SERVEM_MODERATION_TOKEN=$(openssl rand -hex 32) npm run dev -- --port 3100
-SERVEM_MODERATION_TOKEN=<the same value> npm run test:e2e
+# then — the moderation checks exercise their privileged half only when the
+# command holds the operator credential; it starts its own dev server and
+# passes the same value on to it:
+SERVEM_MODERATION_TOKEN=$(openssl rand -hex 32) npm run test:e2e
 ```
 
 A change to eligibility, transitions, money or media is not verified by the build alone — the build
@@ -94,6 +101,7 @@ feel.
 | No browser-driven UI tests | cost/benefit at this stage; the API carries the logic. Browser checks were also less useful than they looked until `allowedDevOrigins` listed `127.0.0.1`: the preview panel served from that origin while the dev server announced `localhost`, so the page was static HTML with nothing hydrating | add a smoke journey when the UI stabilises |
 | The privileged moderation path needs a token in two environments | the server reads it from its environment and the script must be given the same value; without it those checks print a `NOTE` and are skipped rather than passing silently | an operator account provisioned per environment would remove the manual step |
 | A form that gates submission on typed text cannot be driven end-to-end by the automation harness used here | the preview re-mounts pages continuously, so React state resets between typing and clicking; the submit path is covered at the API instead | drive the console against a production build in a stable browser |
+| No production-build service-worker check in CI | registration is production-only and the e2e script starts a dev server; the manifest and offline document are checked instead | add a `next start` smoke step to CI |
 | No concurrency test for offer acceptance | the store has one writer; SQL will not | add a parallel-acceptance test with the SQL repository |
 | No load or edge rate-limit tests | the limiter's shape is covered (unit + live 429 checks); throughput and a shared counter are not | pair with the edge rate-limit work |
 | Moderation has no test surface | no operator API yet | test with the operator API |

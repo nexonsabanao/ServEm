@@ -254,7 +254,7 @@ replaced the furniture with one frame and gave each screen a single job.
   starts the term beats one that contains it; ties break on rating). `/search` renders ServMate rows
   and bookable tickets, keeps recent terms on the device, and hands a result to the storefront's own
   booking dialog — an answer can be acted on without going back to Home.
-- **Messages is two panes.** The thread list lives in `app/account/messages/layout.tsx` so it does
+- **Messages is two panes.** The thread list lives in `app/(app)/account/messages/layout.tsx` so it does
   not re-mount between conversations; `MessagesFrame` steps it aside below 900px so a phone shows
   one conversation at a time, and the thread's back link returns to the list.
 - **Every action lands somewhere.** `?service=<id>` on Home opens that listing's booking sheet, which
@@ -274,6 +274,98 @@ npm test                         # 119 tests, 0 failures
 npm run build                    # succeeds
 npm run test:e2e                 # 213 live checks, 0 failures
 ```
+
+## Work added beyond the original audit (seventh pass — the launch gates)
+
+Driven by `sidehustle_marketplace_blueprint_v3/upgrades`, the twelve must-do items recorded there.
+The ones with no external dependency were built; the rest are named at the end with the decision
+or credential that blocks them.
+
+- **Security headers.** `next.config.ts` now carries one `headers()` block: a fail-closed CSP
+  (`default-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`,
+  `frame-ancestors 'none'`), `X-Frame-Options: DENY`, `nosniff`, `strict-origin-when-cross-origin`,
+  a Permissions-Policy that turns camera, microphone, location and payment off, and HSTS in
+  production only. The two inline allowances are stated in the file: Next's bootstrap script and
+  next/font's style. Dev adds `'unsafe-eval'` and the HMR websocket, and is asserted to omit HSTS.
+- **Account deletion.** `lib/account-deletion.ts` implements the policy the settings page used to
+  defer. Live work — a booking either side can still move, or an open job — refuses deletion with
+  the exact rows named and linked. Otherwise the person is erased in one transaction: password,
+  identities, preferences, profile, listings, portfolio, work posts, media rows (and their bytes),
+  notifications, blocks, password resets and every session. Finished bookings survive as the
+  counterparty's record with their title snapshotted before the job row goes, and the person shows
+  as “Deleted account”. A tombstone keeps the id those bookings point at for 30 days; the purge then
+  removes it and detaches the bookings. `DELETE /api/account` requires the literal word DELETE and,
+  where one exists, the current password; the browser's session cookie is cleared in the response.
+- **Search as a mode.** The top-bar field is now a combobox (`search-combobox.tsx`) that works on
+  every screen and every width, with recent terms, live matches from `GET /api/search/suggest`, and
+  arrow-key navigation. Underneath it is still a real `GET` form, so search survives without
+  JavaScript. The `is-search-view` class and the ≤860px field-swapping are gone; the search screen's
+  own field remains the page's focal control rather than the only way to search.
+- **Saved services became a shortlist.** `/shortlist` lays the saved listings out as equal cards
+  asking the same six questions in the same order — rate, rating, replies, area, availability,
+  category — so four of them read across like a table and one of them reads down like a product.
+  The board is one column on a phone (it used to be a 660px table you had to scroll sideways to
+  compare), keeps its column width on a wide screen instead of stretching two services into two
+  half-screen panels, and clamps each title to two lines so the fact rows stay level from card to
+  card. It reads and writes the same device store as the bookmark buttons, through one
+  `useSavedServices` hook shared with the feed, search and a listing's own page, caps the board at
+  four, and says that the list is on this device rather than implying an account-synced one.
+- **A listing has its own page.** `/services/[serviceId]` is the product page a card now opens: the
+  picture and the one action above the fold, the listing's own description, the ServMate behind it,
+  the first three reviews, and three alternatives ranked by category and area (same category and
+  area first, then same category, then same area — nothing that shares neither is recommended). It
+  is deliberately outside the signed-in route group: a product page has to open for the visitor who
+  has not signed in, so `PublicShell` renders the same frame from its own session read and sends
+  "sign in" through the storefront's existing `/?signin=1` door instead of a second auth dialog. The
+  read model is `getServiceDetail` in `lib/servmate-profile.ts`, beside the card readers; the card
+  projection itself stays thin, because a description is only read once someone opens the listing.
+  The feed's unused `providerCards` and `fromCentavos` exports went with it.
+- **The home hero stopped repeating itself.** The "20 local services · Cavite" line above the title
+  is gone — the area control beside it already names where the customer is and the result line
+  below states the count — and the category tabs are vertically centred instead of sitting on the
+  top edge of their pills.
+- **Installable app and offline shell.** `app/manifest.ts`, generated 192/512/maskable icons, a
+  service worker that caches only the offline document and immutable static assets (never `/api`,
+  never a rendered page), and `/offline`. Registration is production-only, so the dev server is
+  never served a stale chunk by its own worker.
+- **Live refresh without a socket.** `LiveRefresh` re-renders the messages frame and the alerts
+  screen on a slow clock and on focus/visibility, but never while a field has focus or a dialog is
+  open; the bell polls its count on the same rules. The thread syncs its local list from the fresh
+  server render, so a reply that arrived while reading appears without a reload.
+- **CI.** `.github/workflows/ci.yml` runs install, `tsc --noEmit`, `npm test`, `npm run build`, then
+  the live e2e suite, generating a throwaway moderation token so the privileged half runs too. It
+  notes the missing lockfile: until one is committed the install is `npm install`, not `npm ci`.
+- **Proved by** six new cases in `test/account-deletion.test.ts` (live-work refusal, password
+  requirement, erasure plus title snapshot, tombstone identity, provider-side removal, purge and
+  detachment) and new live checks for the launch surfaces: the header set, the suggestion endpoint, the manifest
+  and worker, the offline document, the shortlist and search screens, the card-to-listing link and
+  the listing page's public read, and deletion's signed-out, wrong-word, wrong-password, blocked,
+  successful and re-registration paths.
+
+```
+npx tsc --noEmit                 # clean
+npm test                         # 130 tests, 0 failures
+npm run build                    # succeeds
+SERVEM_MODERATION_TOKEN=… npm run test:e2e   # 245 live checks, 0 failures
+```
+
+### Named blockers, not omissions
+
+- **Payments (PayMongo).** The spec-shaped work is documented and the booking already records an
+  immutable agreed amount, but no PSP account, keys or settlement agreement exist, and the directory
+  itself says there must be no escrow claim. Implementing signature verification or a checkout
+  without the provider's confirmed contract would be guessing at the one integration where a guess
+  costs money. The blocker is a PayMongo merchant account plus a decision on the refund model.
+- **Identity verification (KYC).** Needs a provider choice, a paid contract and a retention
+  agreement for ID documents. `verificationStatus` stays unasserted until that pass exists.
+- **Durable rate limiting.** `lib/rate-limit.ts` is explicitly process-local; the upgrade says to
+  move it when the datastore does. It is blocked on the SQL migration, not forgotten.
+- **Datastore migration.** The JSON store is still the largest limitation. A safe swap touches every
+  domain module and needs a parallel-acceptance test; it is a dedicated pass, not a rider on this
+  one. `query`/`transact` remain the seam.
+- **Resend activation.** The transport is written and reports `not_configured`; turning it on needs
+  `RESEND_API_KEY` and a verified `EMAIL_FROM` domain. Notification emails are not wired yet, so
+  even with a key only recovery mail would send.
 
 ## Deliberate omissions, with reasons
 

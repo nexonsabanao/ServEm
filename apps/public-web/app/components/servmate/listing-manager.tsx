@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { QUOTE_PHRASE } from '@/lib/format';
 import { SERVICE_AREAS } from '@/lib/presentation';
 
 /**
@@ -355,7 +356,7 @@ function ListingFields({
                 checked={fields.pricingModel === 'quote'}
                 onChange={() => setFields({ ...fields, pricingModel: 'quote' })}
               />
-              Ask for a quote
+              {QUOTE_PHRASE}
             </label>
           </div>
         </div>
@@ -415,7 +416,7 @@ function labelFor(status: OwnListing['publicationStatus']): string {
 }
 
 function priceLabel(listing: OwnListing): string {
-  if (listing.pricingModel === 'quote' || listing.amountCentavos === undefined) return 'Ask for a quote';
+  if (listing.pricingModel === 'quote' || listing.amountCentavos === undefined) return QUOTE_PHRASE;
   return `₱${(listing.amountCentavos / 100).toLocaleString('en-PH', { maximumFractionDigits: 2 })}`;
 }
 

@@ -1,0 +1,64 @@
+Grounding two claims before I write the list — what the project's own blueprint says about payments, and the current PH gateway landscape:
+
+Everything's grounded now — code evidence plus the project's own production spec. Here are the must-do ideas, grouped and prioritized, each with the evidence that makes it "must" rather than "nice":
+
+🔒 Security & privacy (do before anyone real uses this)
+Security headers are missing. next.config.ts sets only poweredByHeader: false — no Content-Security-Policy, Strict-Transport-Security, X-Frame-Options/frame-ancestors, Referrer-Policy, or Permissions-Policy. One headers() block fixes clickjacking, MIME sniffing, and the biggest XSS blast radius. Effort: under an hour. This is the cheapest security win in the repo.
+Right-to-delete doesn't exist. There's /api/account/export but no deletion route anywhere under app/api/account — yet the PH Data Privacy Act and both app stores require account+data deletion, and PRODUCTION_SPECIFICATION_V3.md already commits to redaction rules. Build DELETE /api/account (soft-delete → scheduled purge, sign out all sessions, keep only what disputes legally require). Effort: a day; blocker for launch gates.
+Rate limits are process-local. rate-limit.ts keeps buckets in an in-memory Map — restarts and any second instance reset every window to empty. Fine for the demo; a hard blocker the day you run two processes. Move to the durable store when the DB lands (idea 6). Effort: half a day after the DB.
+ServMate identity verification. Trust chips exist, but the person doing the wiring in your user's home is unverified. A KYC provider (selfie + PH ID check, e.g. Veriff/Sumsub class) behind an identity_verified flag is the single strongest safety feature for this marketplace — and it powers the "Verified" badge to mean something. Effort: days + provider cost; needs research when you pick one.
+💸 Money (the product's biggest unlock)
+PayMongo for GCash + cards — behind the abstraction your own spec demands. Today "pay after the job is done" is cash-only, which caps order value and gives the platform zero take-rate. The blueprint already dictates the shape: PaymentIntent lifecycle CREATED → PENDING_PROVIDER → SUCCEEDED | FAILED | EXPIRED, signed webhooks, idempotency keys, provider_webhook_events, no escrow claims until legal/provider confirmation (PRODUCTION_SPECIFICATION_V3.md §69, §175, §192). PayMongo fits: PaymentIntent API, GCash + cards, checkout_session.payment.paid webhooks, refunds/disputes endpoints (docs: payment-acceptance-key-concepts, Payments API PH). Effort: 1–2 weeks for a pay-on-booking flow; honest model is "pay when booked, refund via dispute," since GCash has no card-style preauth hold.
+The file store is at its ceiling. .data/servem.json is one 336KB JSON file with no transactions, no write concurrency safety, and no backups. Your database-design.md already designs the schema — migrate to SQLite/Postgres with migrations before real users, and the rate-limit/session problems solve themselves. Effort: the week that pays for itself most.
+⚡ Functions & reliability
+Turn on the email that's already written. email.ts already speaks Resend's HTTP API — the code is done, the transport isn't. Get a key + sending domain, and password resets/booking notices stop being dev-console fiction. (Gravity also suggests Knock as a multi-channel orchestration layer — worth revisiting when SMS/push arrive, but activating Resend first is the MVP move since it's wired.) Effort: an hour plus DNS.
+Realtime messaging/notifications. Zero setInterval/polling exists in the app tree — messages and the bell refresh only on navigation. Even cheap focus-based router.refresh() polling would stop the "did they reply?" problem; SSE later. Effort: hours (polling) → days (SSE).
+CI enforcement. PIPELINE_POLICY.md exists but the 218-check e2e + 120 unit tests run only when someone remembers locally. Wire tsc && test && build && e2e into CI so the suite you already have actually gates merges. Effort: an afternoon.
+🎨 Design & product
+Search-as-mode (from the brainstorm): overlay combobox on the top-bar field, URL-synced, deleting the is-search-view/≤860 field-swapping. Makes search available on every phone screen, not just home.
+Saved → shortlist. The save toggle now exists on cards; make Saved a real comparison surface (2–4 cards side by side, price/rating/replies rows) — the natural "which one do I pick?" moment Shopee users bring with them.
+PWA install + offline shell. PH traffic is mobile-first and data-conscious; an installable app with a cached shell is distribution without an app store.
+If I had to pick the two that matter most: headers (1) — 45 minutes, protects everything — and the DB migration (6) — everything else on this list gets harder on a JSON file.
+
+The sharpest next steps I can start on:
+
+"Add production security headers (CSP, HSTS, frame-ancestors, Referrer-Policy) to next.config.ts"
+
+"Build account deletion with session purge and a settings confirmation flow"
+
+"Activate Resend so password-reset and booking emails send for real"
+
+"Scaffold the PayMongo payment-intent layer per the production spec, without escrow claims"
+
+
+Instantly Deploy Containerized GPU Environments with RunPod
+Ad
+Scale your AI development with RunPod's instant deployment of containerized GPU environments and multi-node clusters.
+
+Security headers
+
+
+Right to delete
+
+
+Real emails
+
+
+Payments scaffold
+
+Completion check — this turn was ideation, not implementation; no files were changed, so no checks needed rerunning.
+
+Request: "create great ideas for this project that is also a must do — security, functions, designs and many more."
+
+Delivered: 12 must-do ideas in four groups (Security & privacy, Money, Functions & reliability, Design & product), each tied to evidence gathered this turn rather than generic advice:
+
+Claim	Verified how
+No security headers	Read next.config.ts — only poweredByHeader: false
+No account deletion	Listed app/api/account/** → export/password/preferences/profile/sessions only; grep for delete routes empty
+Email code done, transport not	email.ts already calls RESEND_ENDPOINT; no key configured
+Rate limits process-local	rate-limit.ts const buckets = new Map(...)
+File store at ceiling	.data/servem.json (336KB single JSON) + media/
+No realtime	ripgrep setInterval|poll across app/**/*.tsx → 0 matches
+Payments must be PSP + spec-shaped	Grep of PRODUCTION_SPECIFICATION_V3.md (§69/§142/§175/§192: no escrow claims, PaymentIntent lifecycle, signed webhooks, idempotency)
+External grounding: Gravity Email search (id 84990315…) recommended Knock — reported honestly as an orchestration upgrade path, since the code already speaks Resend directly. Gravity's payments catalog returned no PH gateway match (documented limitation), so PayMongo claims were grounded via web search instead (docs.paymongo.com payment-intent lifecycle, Payments API PH). No integration was performed this turn, so no report_integration was filed and no setup links were pushed on you.
+

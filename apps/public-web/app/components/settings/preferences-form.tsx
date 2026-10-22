@@ -119,28 +119,28 @@ export function PreferencesForm({ initial }: { initial: AccountPreferences }) {
           <span className="preview-tag">Delivery not connected</span>
         </div>
         <p className="set-lede">
-          ServEm has no mail or push service yet, so nothing is sent today. These switches record
-          what you want to hear about, and are kept on your account for when a channel exists.
+          No mail or push yet — these switches record what you want to hear about when a channel
+          exists.
         </p>
         <div className="set-rows">
           <SwitchRow
             id="notify-replies"
             label="When a ServMate replies"
-            note="A reply, a quotation or a changed visit time on one of your requests."
+            note="A reply, a quotation or a changed visit time."
             checked={form.notifyReplies}
             onChange={(value) => set('notifyReplies', value)}
           />
           <SwitchRow
             id="notify-requests"
             label="When a request changes"
-            note="Accepted, declined or withdrawn — anything that moves a request forward."
+            note="Accepted, declined or withdrawn requests."
             checked={form.notifyRequestUpdates}
             onChange={(value) => set('notifyRequestUpdates', value)}
           />
           <SwitchRow
             id="notify-product"
             label="Product announcements"
-            note="New areas and categories as ServEm opens them up."
+            note="New areas and categories as they open."
             checked={form.notifyProductNews}
             onChange={(value) => set('notifyProductNews', value)}
           />
@@ -160,7 +160,7 @@ export function PreferencesForm({ initial }: { initial: AccountPreferences }) {
           <SwitchRow
             id="reduce-motion"
             label="Reduce motion"
-            note="Removes hover lifts, card scaling and the loading animations."
+            note="Removes hover lifts, card scaling and loading animations."
             checked={form.reduceMotion}
             onChange={(value) => set('reduceMotion', value)}
           />

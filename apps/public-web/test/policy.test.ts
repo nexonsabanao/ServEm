@@ -103,6 +103,7 @@ function snapshot(over: Partial<Database> = {}): Database {
     userBlocks: [],
     userReports: [],
     moderationActions: [],
+    accountDeletions: [],
     pendingAuth: [],
     passwordResets: [],
     ...over,

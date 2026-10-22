@@ -11,9 +11,10 @@ const MAX_SHOWN = 9;
  * The unread count as a badge on the shell.
  *
  * The shell is rendered per page and does not know about notifications, so the
- * count is fetched once and refreshed on navigation. A failure leaves the badge
- * off rather than showing a wrong number: the count is a courtesy, and the
- * account page is the authority on what is actually unread.
+ * count is fetched on navigation and then on a slow clock (and whenever the tab
+ * comes back into view) — an offer can arrive while somebody is reading. A
+ * failure leaves the badge off rather than showing a wrong number: the count is
+ * a courtesy, and the account page is the authority on what is actually unread.
  */
 export function NotificationBell() {
   const pathname = usePathname();
@@ -23,6 +24,7 @@ export function NotificationBell() {
     let cancelled = false;
 
     async function load() {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       try {
         const response = await fetch('/api/notifications', { cache: 'no-store' });
         if (!response.ok) return;
@@ -35,9 +37,20 @@ export function NotificationBell() {
       }
     }
 
+    function onVisible() {
+      if (document.visibilityState === 'visible') void load();
+    }
+
     void load();
+    const timer = setInterval(load, 45_000);
+    window.addEventListener('focus', load);
+    document.addEventListener('visibilitychange', onVisible);
+
     return () => {
       cancelled = true;
+      clearInterval(timer);
+      window.removeEventListener('focus', load);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [pathname]);
 
@@ -48,7 +61,14 @@ export function NotificationBell() {
       href="/account/notifications"
       className="app-top-action"
       aria-current={active ? 'page' : undefined}
-      aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
+      // The accessible name starts with the visible word "Alerts" so speech
+      // control can say what the button says (WCAG 2.5.3). It is set even at
+      // zero unread, because the word itself is CSS-hidden in the icon-only
+      // widths (≤1080px — see the NAVIGATION section of feed.css) and would
+      // otherwise leave the button unnamed.
+      aria-label={
+        unread > 0 ? `Alerts, ${unread > MAX_SHOWN ? `${MAX_SHOWN}+` : unread} unread` : 'Alerts'
+      }
     >
       <BellIcon />
       <span className="app-top-action-label">Alerts</span>

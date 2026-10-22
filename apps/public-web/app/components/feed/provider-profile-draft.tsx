@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { parsePreviewState, SERVEMATE_PREVIEW_KEY } from '@/lib/servmate';
+import { readProfileDraft } from '@/lib/device-store';
 
 /**
  * The public profile text for one ServMate, overlaid with this device's draft.
@@ -27,14 +27,9 @@ export function ProviderProfileDraft({
   const [draft, setDraft] = useState<{ headline: string; about: string; areas: string[] } | null>(null);
 
   useEffect(() => {
-    try {
-      const stored: unknown = JSON.parse(window.localStorage.getItem(SERVEMATE_PREVIEW_KEY) ?? 'null');
-      const entry = parsePreviewState(stored).profiles[providerId];
-      if (entry && (entry.headline || entry.about || entry.areas.length > 0)) {
-        setDraft({ headline: entry.headline, about: entry.about, areas: entry.areas });
-      }
-    } catch {
-      // The published roster stays in place when storage is unavailable.
+    const entry = readProfileDraft(providerId);
+    if (entry && (entry.headline || entry.about || entry.areas.length > 0)) {
+      setDraft({ headline: entry.headline, about: entry.about, areas: entry.areas });
     }
   }, [providerId]);
 

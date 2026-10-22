@@ -12,13 +12,23 @@ import { ServiceThumb, StarRating } from './service-card';
  * It posts to the same `POST /api/bookings` endpoint the storefront uses, so a
  * request is scoped to the signed-in session server-side and gets a reference.
  * The endpoint derives ownership from the cookie, never the payload.
+ *
+ * A signed-out visitor (the storefront at `/`) gets the same sheet to read,
+ * with the form replaced by the sign-in door the storefront used to show —
+ * nobody is ever asked to describe a job they cannot send.
  */
 export function BookingModal({
   service,
+  signedOut = false,
+  onSignIn,
   onClose,
   onBooked,
 }: {
   service: FeedService | null;
+  /** Whether there is no session here, so the sheet gates instead of posting. */
+  signedOut?: boolean;
+  /** Opens the sign-in dialog, owned by the storefront around this sheet. */
+  onSignIn?: () => void;
   onClose: () => void;
   onBooked: (reference: string) => void;
 }) {
@@ -57,6 +67,7 @@ export function BookingModal({
 
       if (response.status === 401) {
         setError('Your session ended. Sign in again to send this request.');
+        onSignIn?.();
         return;
       }
       if (!response.ok) {
@@ -110,24 +121,35 @@ export function BookingModal({
                 </div>
               </div>
 
-              <label className="book-label" htmlFor="book-message">What needs doing?</label>
-              <textarea
-                id="book-message"
-                className="book-input"
-                rows={4}
-                maxLength={4000}
-                value={message}
-                onChange={(event) => setMessage(event.target.value)}
-                placeholder="Describe the job, the address area, and a time that suits you…"
-              />
-              {error && <p className="book-error" role="alert">{error}</p>}
+              {signedOut ? (
+                <div className="book-gated">
+                  <p>Sign in to send a booking request. You can review this service without an account.</p>
+                  <button type="button" className="book-primary" onClick={() => onSignIn?.()}>
+                    Sign in to request
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <label className="book-label" htmlFor="book-message">What needs doing?</label>
+                  <textarea
+                    id="book-message"
+                    className="book-input"
+                    rows={4}
+                    maxLength={4000}
+                    value={message}
+                    onChange={(event) => setMessage(event.target.value)}
+                    placeholder="Describe the job, the address area, and a time that suits you…"
+                  />
+                  {error && <p className="book-error" role="alert">{error}</p>}
 
-              <div className="book-foot">
-                <span className="book-note"><StarIcon /> No payment until the job is done</span>
-                <button type="button" className="book-primary" onClick={() => void submit()} disabled={pending}>
-                  {pending ? 'Sending…' : 'Send request'}
-                </button>
-              </div>
+                  <div className="book-foot">
+                    <span className="book-note"><StarIcon /> No payment until the job is done</span>
+                    <button type="button" className="book-primary" onClick={() => void submit()} disabled={pending}>
+                      {pending ? 'Sending…' : 'Send request'}
+                    </button>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>

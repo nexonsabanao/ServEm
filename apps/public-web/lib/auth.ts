@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { cookies } from 'next/headers';
+import { cache } from 'react';
 import {
   query,
   transact,
@@ -212,10 +213,17 @@ export async function endSession(token: string): Promise<void> {
   });
 }
 
-export async function getSessionToken(): Promise<string | null> {
+/**
+ * Read once per request. React's `cache` memoises inside a single render, so a
+ * layout and the page under it — and the account, profile and preference reads
+ * they share — parse the cookie and reach the store once instead of once each.
+ * Outside a render (an API route) it simply calls through, and the client build
+ * is a pass-through too, so nothing is ever memoised across requests.
+ */
+export const getSessionToken = cache(async function getSessionToken(): Promise<string | null> {
   const store = await cookies();
   return store.get(SESSION_COOKIE)?.value ?? null;
-}
+});
 
 /**
  * The signed-in account's preferences, folded onto the defaults.
@@ -224,20 +232,22 @@ export async function getSessionToken(): Promise<string | null> {
  * its default area and sort, so a preference applies on the first painted frame
  * rather than after a client round trip. Signed out, the defaults apply.
  */
-export async function getSessionPreferences(): Promise<AccountPreferences> {
-  const token = await getSessionToken();
-  if (!token) return DEFAULT_PREFERENCES;
+export const getSessionPreferences = cache(
+  async function getSessionPreferences(): Promise<AccountPreferences> {
+    const token = await getSessionToken();
+    if (!token) return DEFAULT_PREFERENCES;
 
-  return query((database) => {
-    const session = database.sessions.find((item) => item.token === token);
-    if (!session) return DEFAULT_PREFERENCES;
-    if (new Date(session.expiresAt).getTime() <= Date.now()) return DEFAULT_PREFERENCES;
-    const user = database.users.find((item) => item.id === session.userId);
-    return mergePreferences(user?.preferences);
-  });
-}
+    return query((database) => {
+      const session = database.sessions.find((item) => item.token === token);
+      if (!session) return DEFAULT_PREFERENCES;
+      if (new Date(session.expiresAt).getTime() <= Date.now()) return DEFAULT_PREFERENCES;
+      const user = database.users.find((item) => item.id === session.userId);
+      return mergePreferences(user?.preferences);
+    });
+  },
+);
 
-export async function getSessionAccount(): Promise<Account | null> {
+export const getSessionAccount = cache(async function getSessionAccount(): Promise<Account | null> {
   const token = await getSessionToken();
   if (!token) return null;
 
@@ -248,7 +258,7 @@ export async function getSessionAccount(): Promise<Account | null> {
     const user = database.users.find((item) => item.id === session.userId);
     return user ? toAccount(user) : null;
   });
-}
+});
 
 /**
  * The signed-in person's own record for the account area.
@@ -272,30 +282,32 @@ export type SessionProfile = Account & {
   profile: CustomerProfile;
 };
 
-export async function getSessionProfile(): Promise<SessionProfile | null> {
-  const token = await getSessionToken();
-  if (!token) return null;
+export const getSessionProfile = cache(
+  async function getSessionProfile(): Promise<SessionProfile | null> {
+    const token = await getSessionToken();
+    if (!token) return null;
 
-  return query((database) => {
-    const session = database.sessions.find((item) => item.token === token);
-    if (!session) return null;
-    if (new Date(session.expiresAt).getTime() <= Date.now()) return null;
-    const user = database.users.find((item) => item.id === session.userId);
-    if (!user) return null;
-    const provider = user.isServMate ? servMateProfileFor(database, user.id) : undefined;
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      createdAt: user.createdAt,
-      identities: user.identities ?? [],
-      hasPassword: Boolean(user.passwordHash),
-      isServMate: user.isServMate === true,
-      ...(provider ? { servmateProfileId: provider.id } : {}),
-      profile: mergeProfile(user.profile),
-    };
-  });
-}
+    return query((database) => {
+      const session = database.sessions.find((item) => item.token === token);
+      if (!session) return null;
+      if (new Date(session.expiresAt).getTime() <= Date.now()) return null;
+      const user = database.users.find((item) => item.id === session.userId);
+      if (!user) return null;
+      const provider = user.isServMate ? servMateProfileFor(database, user.id) : undefined;
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        createdAt: user.createdAt,
+        identities: user.identities ?? [],
+        hasPassword: Boolean(user.passwordHash),
+        isServMate: user.isServMate === true,
+        ...(provider ? { servmateProfileId: provider.id } : {}),
+        profile: mergeProfile(user.profile),
+      };
+    });
+  },
+);
 
 /* ------------------------------------------------------------------ *
  * Server-side authorization guards.

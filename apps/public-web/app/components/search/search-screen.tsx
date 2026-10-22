@@ -1,99 +1,58 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronRightIcon, SearchIcon, UserIcon } from '@/app/components/icons';
 import { BookingModal } from '@/app/components/feed/booking-modal';
-import { ServiceCard } from '@/app/components/feed/service-card';
+import { ServiceCard, VerifiedMark } from '@/app/components/feed/service-card';
+import { useSavedServices } from '@/app/components/feed/use-saved-services';
 import type { FeedService } from '@/lib/feed-data';
 import type { SearchResults } from '@/lib/search';
 
-const RECENT_KEY = 'servem:recent-searches';
-/** The same bookmarks the storefront keeps, so a card saved here is saved there. */
-const SAVED_KEY = 'servem:saved-services';
-const MAX_RECENT = 6;
-
 /**
- * The search screen.
+ * The answers to a search.
  *
- * One field, the terms you used recently, and the answers as rows and tickets
- * you can act on without leaving the page — the same booking dialog the
- * storefront uses. Results are decided on the server from the query, so a
- * search is a URL you can reload, share or go back to.
+ * The query itself has one owner: the mode-wide field in the top bar
+ * (`search-combobox.tsx`), which also keeps the recent terms. This screen only
+ * renders what the server decided the query means, as rows and tickets you can
+ * act on without leaving the page — the same booking dialog the storefront
+ * uses. Because the query is the URL, a search is a page you can reload, share
+ * or go back to, and its field is already filled when you arrive.
  */
 export function SearchScreen({ results }: { results: SearchResults }) {
   const router = useRouter();
-  const [recent, setRecent] = useState<string[]>([]);
-  const [saved, setSaved] = useState<string[]>([]);
   const [booking, setBooking] = useState<FeedService | null>(null);
-
-  useEffect(() => setRecent(readRecent()), []);
-  useEffect(() => setSaved(readSaved()), []);
-
-  // Being on a search screen is the strongest sign a term was worth keeping.
-  useEffect(() => {
-    if (!results.searched) return;
-    const next = [results.query, ...readRecent().filter((term) => term !== results.query)].slice(
-      0,
-      MAX_RECENT,
-    );
-    writeRecent(next);
-    setRecent(next);
-  }, [results.searched, results.query]);
-
-  function clearRecent() {
-    writeRecent([]);
-    setRecent([]);
-  }
-
-  function toggleSave(id: string) {
-    const next = saved.includes(id) ? saved.filter((item) => item !== id) : [...saved, id];
-    setSaved(next);
-    try {
-      window.localStorage.setItem(SAVED_KEY, JSON.stringify(next));
-    } catch {
-      // The bookmark still holds for this session when storage is unavailable.
-    }
-  }
+  /* No catalogue is passed: these are one query's matches, so a save that does
+     not appear here must not be pruned just because it missed the search. */
+  const { saved, toggle: toggleSave } = useSavedServices();
 
   const nothing =
     results.searched && results.services.length === 0 && results.providers.length === 0;
 
   return (
     <div className="search-screen">
-      <h1 className="visually-hidden">Search</h1>
+      <h1 className="phone-title">Search</h1>
 
-      <form className="search-form" action="/search" method="get" role="search">
-        <span className="search-form-icon" aria-hidden="true"><SearchIcon /></span>
-        <label className="visually-hidden" htmlFor="search-q">Search services and ServMates</label>
+      {/*
+       * On a phone the shell's top bar belongs to home, so this screen carries
+       * its own field. It is a plain GET form in the URL, which means the same
+       * search still works before hydration and lands on the same page.
+       */}
+      <form className="search-inline" action="/search" method="get" role="search">
+        <span className="search-inline-icon" aria-hidden="true"><SearchIcon /></span>
+        <label className="visually-hidden" htmlFor="search-inline-input">Search services and ServMates</label>
         <input
-          id="search-q"
-          type="search"
+          id="search-inline-input"
           name="q"
+          type="search"
+          defaultValue={results.query}
+          placeholder="Search services"
           autoComplete="off"
           maxLength={80}
-          defaultValue={results.query}
-          placeholder="Search services, areas or ServMates"
-          // The whole screen is this field; landing anywhere else would be a detour.
-          autoFocus
         />
-        <button type="submit" className="search-submit">Search</button>
+        <button type="submit">Search</button>
       </form>
-
-      {recent.length > 0 && (
-        <div className="search-recent">
-          <span className="search-recent-label">Recent</span>
-          {recent.map((term) => (
-            <Link key={term} className="search-chip" href={`/search?q=${encodeURIComponent(term)}`}>
-              {term}
-            </Link>
-          ))}
-          <button type="button" className="search-clear" onClick={clearRecent}>
-            Clear
-          </button>
-        </div>
-      )}
 
       {!results.searched && (
         <div className="pane-blank">
@@ -128,7 +87,7 @@ export function SearchScreen({ results }: { results: SearchResults }) {
                   <span className="row-copy">
                     <span className="row-title">
                       {provider.name}
-                      {provider.verified && <span className="svc-verified">Verified</span>}
+                      {provider.verified && <VerifiedMark />}
                     </span>
                     <span className="row-value">
                       {provider.area} · {provider.rating.toFixed(1)} ★ ·{' '}
@@ -170,34 +129,4 @@ export function SearchScreen({ results }: { results: SearchResults }) {
       <BookingModal service={booking} onClose={() => setBooking(null)} onBooked={() => router.refresh()} />
     </div>
   );
-}
-
-function readSaved(): string[] {
-  try {
-    const stored: unknown = JSON.parse(window.localStorage.getItem(SAVED_KEY) ?? '[]');
-    return Array.isArray(stored)
-      ? stored.filter((id): id is string => typeof id === 'string')
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function readRecent(): string[] {
-  try {
-    const stored: unknown = JSON.parse(window.localStorage.getItem(RECENT_KEY) ?? '[]');
-    return Array.isArray(stored)
-      ? stored.filter((term): term is string => typeof term === 'string').slice(0, MAX_RECENT)
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeRecent(terms: string[]): void {
-  try {
-    window.localStorage.setItem(RECENT_KEY, JSON.stringify(terms));
-  } catch {
-    // Recent searches are a convenience; the screen works without them.
-  }
 }

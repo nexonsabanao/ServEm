@@ -95,7 +95,8 @@ search works before any JavaScript loads. A screen never draws its own navigatio
 
 | Screen | What it is for |
 |---|---|
-| `/home` | The marketplace: area chips, the category index, sortable tickets, and a booking sheet |
+| `/home` | The marketplace: the area control, the category index, sortable tickets, and a booking sheet |
+| `/services/[serviceId]` | One listing as its own page — description, ServMate, reviews and similar services. Public: a card opens it before sign-in |
 | `/search` | Ranked ServMates and listings from `lib/search.ts`, with recent terms kept on the device |
 | `/account/messages` | Two panes — the thread list beside the open conversation (one at a time on a phone) |
 | `/account/requests`, `/account/jobs` | The account's own bookings and its private job posts |
@@ -159,19 +160,26 @@ is used only by the test run.
 The store-backed tests point `SERVEM_DATA_DIR` at a temporary directory before importing anything,
 so they can never read or write the `.data/` file a running site is serving.
 
-### End to end against a running server
+### End to end, in one command
 
 ```
-SERVEM_DATA_DIR=$(mktemp -d) npm run dev -- --port 3100   # terminal one
-npm run test:e2e                                          # terminal two
+npm run test:e2e
 ```
 
 `test/e2e-live.mjs` drives the real HTTP surface with real session cookies: it signs up a
 customer and five ServMates, posts and publishes a job, checks the eligible, the
 wrong-category and the out-of-area providers each see exactly what they should, has two
 ServMates bid on the same job (including after the first offer arrives), and then compares and
-accepts. It exits non-zero if any check fails. Point `BASE` at another origin, and
-`SERVEM_DATA_DIR` at a scratch directory so the throwaway accounts stay out of your own store.
+accepts. It exits non-zero if any check fails.
+
+The run is isolated by default, and that isolation is the point: the script starts its own dev
+server on a free loopback port, in its own build directory (`.next-e2e`), with `SERVEM_DATA_DIR`
+pointed at a fresh scratch directory, runs every check against it, then stops the server,
+deletes the directory and puts `next-env.d.ts` and `tsconfig.json` back as it found them. Your
+`.data/` store and your rate-limit windows are never touched, so two runs in a row both pass and
+the throwaway accounts never reach the console's roster. Set `BASE` to drive a server that is
+already up instead — its data directory and its limits are then whatever it was started with,
+so set `SERVEM_DATA_DIR` on that server if you want the same isolation.
 
 
 To connect the public catalog, copy `.env.example` to `.env.local` and replace the placeholder with the API root ending in `/api/v1`. The website only calls `GET /services`, with a 20-item limit. No API secret belongs in the browser or this file.

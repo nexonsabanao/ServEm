@@ -6,9 +6,13 @@ import { ChevronRightIcon } from '@/app/components/icons';
  * A settings sub-screen.
  *
  * Every screen under Settings opens the same way — one way back to the list, one
- * heading, and then the controls — so drilling in and backing out is a single
+ * heading, and then the groups — so drilling in and backing out is a single
  * gesture you learn once. The heading is the page's `h1`: the shell no longer
  * prints your name on top of every screen, so the page has to name itself.
+ *
+ * `settings-detail` is what makes a sub-screen and the Settings index share one
+ * language: group labels go small and uppercase, and each group is a card of
+ * rows. The styles live beside the index's own rules in `feed.css`.
  */
 export function SettingsScreen({
   title,
@@ -20,7 +24,7 @@ export function SettingsScreen({
   children: ReactNode;
 }) {
   return (
-    <div className="screen">
+    <div className="screen settings-detail">
       <Link className="screen-back" href="/account/settings">
         <ChevronRightIcon /> Settings
       </Link>
@@ -59,6 +63,36 @@ export function SettingsRow({
         </span>
         <span className="row-chevron" aria-hidden="true"><ChevronRightIcon /></span>
       </Link>
+    </li>
+  );
+}
+
+/**
+ * A row that is a setting rather than a door: the same card, the same label and
+ * one line of value, with its control where a door's chevron would sit. Facts a
+ * page only states pass no control at all.
+ */
+export function SettingsField({
+  label,
+  value,
+  icon: Icon,
+  control,
+}: {
+  label: ReactNode;
+  value: ReactNode;
+  icon?: ComponentType;
+  control?: ReactNode;
+}) {
+  return (
+    <li>
+      <div className={`row row-field${Icon ? '' : ' row-field-plain'}`}>
+        {Icon && <span className="row-icon" aria-hidden="true"><Icon /></span>}
+        <span className="row-copy">
+          <span className="row-title">{label}</span>
+          <span className="row-value">{value}</span>
+        </span>
+        {control && <span className="row-control">{control}</span>}
+      </div>
     </li>
   );
 }

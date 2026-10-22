@@ -23,6 +23,7 @@
   --m-brand-deep: #52667b;        /* darker slate — hover */
   --m-brand-wash: #e9edf1;        /* slate tint */
   --m-ok: #6d8196;
+  --m-danger: var(--danger);      /* one source for the error tone */
   --m-radius: 10px;
   --m-radius-lg: 14px;
   --m-shadow: 0 1px 2px rgba(74, 74, 74, 0.05), 0 10px 28px rgba(74, 74, 74, 0.08);
@@ -42,13 +43,55 @@
 .app-brand-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 9px; background: var(--m-ink); color: var(--paper); font-family: var(--display); font-weight: 700; font-size: 20px; }
 .app-brand-word { font-family: var(--display); font-size: 23px; font-weight: 600; letter-spacing: -0.03em; }
 
-.app-topsearch { flex: 1; max-width: 540px; min-height: 44px; display: flex; align-items: center; gap: 9px; padding: 9px 16px; border-radius: 999px; background: var(--m-surface-2); border: 1px solid var(--m-line); }
-.app-topsearch:focus-within { border-color: var(--m-accent-soft); background: var(--m-surface); }
+/*
+ * Search is a mode, not a page: the same field sits in the top bar on every
+ * screen and every width, and expands into suggestions under itself. The wrapper
+ * owns the space and the positioning; the form stays a plain form underneath so
+ * a browser without JavaScript still submits it.
+ */
+.app-search { position: relative; flex: 1; max-width: 540px; min-width: 0; }
+.app-topsearch { width: 100%; min-height: 44px; display: flex; align-items: center; gap: 9px; padding: 9px 16px; border-radius: 999px; background: var(--m-surface-2); border: 1px solid var(--m-line); }
+.app-topsearch:focus-within, .app-topsearch.is-open { border-color: var(--m-accent-soft); background: var(--m-surface); }
 .app-topsearch-icon { display: grid; place-items: center; width: 18px; height: 18px; color: var(--m-ink-soft); }
 .app-topsearch-icon svg { width: 18px; height: 18px; }
 .app-topsearch input { flex: 1; min-width: 0; border: 0; background: transparent; font-size: 14px; color: var(--m-ink); font-family: inherit; }
 .app-topsearch input:focus { outline: none; }
 .app-topsearch input::placeholder { color: var(--m-ink-soft); }
+.app-search-panel {
+  position: absolute; top: calc(100% + 8px); left: 0; right: 0; z-index: 60;
+  display: grid; gap: 1px; padding: 6px; max-height: min(62vh, 420px); overflow-y: auto;
+  border: 1px solid var(--m-line); border-radius: 14px; background: var(--m-surface);
+  box-shadow: var(--m-shadow);
+}
+.app-search-option {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 14px;
+  width: 100%; min-height: 42px; padding: 9px 11px; border: 0; border-radius: 9px;
+  background: transparent; color: var(--m-ink); text-align: left; font-size: 13.5px;
+}
+.app-search-option[aria-selected='true'], .app-search-option:hover { background: var(--m-surface-2); }
+.app-search-option-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-search-option-hint { flex: none; color: var(--m-ink-soft); font-family: var(--utility); font-size: 9.5px; letter-spacing: 0.04em; text-transform: uppercase; }
+.app-search-option[data-kind='search'] .app-search-option-label { font-weight: 600; }
+.app-search-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 0; padding: 7px 11px 3px; border-top: 1px solid var(--m-line); color: var(--m-ink-soft); font-family: var(--utility); font-size: 9px; letter-spacing: 0.05em; text-transform: uppercase; }
+.app-search-clear { min-height: 28px; padding: 0 4px; border: 0; background: none; color: var(--m-brand-deep); font-family: var(--utility); font-size: 9px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; text-decoration: underline; text-underline-offset: 2px; }
+
+/*
+ * The install offer: one strip under the top bar, aligned with the frame's own
+ * column so it reads as part of the chrome rather than a dialog. It only exists
+ * when the browser has an install to offer (`app/components/install-prompt.tsx`).
+ */
+.app-install-wrap { max-width: 1360px; margin-inline: auto; padding: 14px 22px 0; }
+.app-install { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 14px; border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface); box-shadow: var(--m-shadow-sm); }
+.app-install-mark { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; border-radius: 8px; background: var(--m-ink); color: var(--paper); font-family: var(--display); font-size: 16px; font-weight: 700; }
+.app-install-copy { min-width: 0; margin: 0; color: var(--m-ink-soft); font-size: 13px; line-height: 1.5; }
+.app-install-copy strong { margin-right: 5px; color: var(--m-ink); font-weight: 700; }
+.app-install-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; flex: 0 0 auto; }
+.app-install-go { display: inline-flex; min-height: 40px; align-items: center; padding: 0 18px; border: 1px solid var(--m-brand); border-radius: 8px; background: var(--m-brand); font-size: 13px; font-weight: 700; transition: background 140ms ease, border-color 140ms ease; }
+.app-shell .app-install-go { color: var(--paper); }
+.app-install-go:hover { background: var(--m-brand-deep); border-color: var(--m-brand-deep); }
+.app-install-go:disabled { opacity: 0.7; cursor: wait; }
+.app-install-later { display: inline-flex; min-height: 40px; align-items: center; padding: 0 12px; border: 1px solid transparent; border-radius: 8px; background: none; color: var(--m-ink-soft); font-size: 13px; font-weight: 600; }
+.app-install-later:hover { border-color: var(--m-line); color: var(--m-ink); }
 
 .app-topbar-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .app-top-action { position: relative; display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 14px; border: 1px solid var(--m-line); border-radius: 10px; background: var(--m-surface); font-size: 13.5px; font-weight: 600; color: var(--m-ink); transition: background 140ms ease, border-color 140ms ease; }
@@ -57,24 +100,17 @@
 .app-top-action svg { width: 19px; height: 19px; }
 .app-top-badge { position: absolute; top: -6px; right: -6px; min-width: 19px; height: 19px; padding: 0 5px; display: grid; place-items: center; border-radius: 999px; background: var(--m-brand); color: var(--paper); font-family: var(--utility); font-size: 11px; font-weight: 700; border: 2px solid var(--m-surface); }
 
-/* Account dropdown */
-.app-account { position: relative; }
-.app-account-trigger { display: inline-flex; align-items: center; min-height: 44px; padding: 0 7px; border: 1px solid var(--m-line); border-radius: 10px; background: var(--m-surface); }
-.app-account-trigger:hover { background: var(--m-surface-2); }
-.app-account-avatar { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--m-ink); color: var(--paper); font-family: var(--display); font-weight: 700; font-size: 15px; }
-.app-account-name { font-size: 13.5px; font-weight: 600; }
-.app-account-caret { display: grid; place-items: center; width: 14px; height: 14px; color: var(--m-ink-soft); }
-.app-account-caret svg { width: 14px; height: 14px; }
-.app-account-menu { position: absolute; right: 0; top: 50px; z-index: 45; display: grid; gap: 2px; min-width: 232px; padding: 10px; background: var(--m-surface); border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); box-shadow: var(--m-shadow); }
-.app-account-id { display: grid; gap: 2px; padding: 6px 10px 10px; border-bottom: 1px solid var(--m-line); margin-bottom: 6px; }
-.app-account-id strong { font-family: var(--display); font-size: 14px; }
-.app-account-id span { font-size: 12px; line-height: 1.45; color: var(--m-ink-soft); }
-.app-account-menu a { display: flex; min-height: 44px; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; font-size: 13.5px; font-weight: 500; }
-.app-account-menu a svg { width: 17px; height: 17px; color: var(--m-accent); }
-.app-account-menu a:hover { background: var(--m-surface-2); }
-.app-account-signout { margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--m-line); }
-.app-signout { width: 100%; justify-content: center; border-radius: 8px; border-color: var(--m-line); color: var(--m-brand-deep); font-weight: 600; }
-.app-signout:hover { border-color: var(--m-brand); }
+/* The signed-out top bar (storefront at `/`): one door instead of an account menu. */
+.app-signin { min-height: 40px; padding: 0 16px; border: 1px solid var(--m-brand); border-radius: 10px; background: var(--m-brand); color: var(--paper); font-size: 13.5px; font-weight: 700; cursor: pointer; transition: background 140ms ease, border-color 140ms ease; }
+.app-shell .app-signin { color: var(--paper); }
+.app-signin:hover { background: var(--m-brand-deep); border-color: var(--m-brand-deep); }
+
+/*
+ * One way back at the top of every screen that is not home — on a phone, where
+ * the rail is gone. Whether it exists is deliberately not decided here: the
+ * NAVIGATION section below owns every rule that shows or hides navigation, so
+ * there is one place to read which width gets what.
+ */
 
 /*
  * The frame: one rail, one column of content. The rail is the navigation, so a
@@ -149,14 +185,6 @@
 .row-chevron svg { width: 16px; height: 16px; }
 .row-foot { padding: 12px 16px; background: var(--m-surface-2); color: var(--m-ink-soft); font-size: 12px; }
 
-/* The account's own card, shown once — in Settings. */
-.me-card { display: flex; align-items: center; gap: 16px; padding: 18px 20px; border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface); }
-.me-avatar { display: grid; place-items: center; width: 58px; height: 58px; flex: 0 0 58px; border-radius: 50%; background: var(--m-ink); color: var(--paper); font-family: var(--display); font-size: 26px; font-weight: 700; }
-.me-copy { display: grid; gap: 3px; min-width: 0; }
-.me-name { margin: 0; font-family: var(--display); font-size: 21px; font-weight: 600; letter-spacing: -0.02em; }
-.me-line { margin: 0; overflow: hidden; color: var(--m-ink-soft); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-.me-since { margin: 0; color: var(--m-ink-soft); font-family: var(--utility); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; }
-
 /*
  * A screen inside the frame: a back link to where you came from, a title, and
  * then the content. Every sub-screen uses it, so drilling in and backing out is
@@ -169,26 +197,28 @@
 .screen-title { margin: 0; font-family: var(--display); font-size: clamp(23px, 2.6vw, 29px); font-weight: 600; letter-spacing: -0.022em; }
 .screen-sub { margin: 6px 0 0; color: var(--m-ink-soft); font-size: 13px; line-height: 1.55; }
 
+/*
+ * A screen's own title, printed only on a phone. The wide frame's rail names
+ * every screen, but on a phone the top bar is home's alone — so the screens
+ * that handed their name to the bar need to say it themselves.
+ */
+.phone-title { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
 /* ---------- Search screen ---------- */
 .search-screen { display: grid; gap: 16px; }
-.search-form { display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 16px; border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface); }
-.search-form:focus-within { border-color: var(--m-brand); }
-.search-form-icon { display: grid; place-items: center; width: 20px; height: 20px; color: var(--m-ink-soft); }
-.search-form-icon svg { width: 20px; height: 20px; }
-.search-form input { flex: 1; min-width: 0; min-height: 44px; border: 0; background: transparent; color: var(--m-ink); font-family: inherit; font-size: 15px; }
-.search-form input:focus { outline: none; }
-.search-submit { min-height: 44px; padding: 0 20px; border: 1px solid var(--m-brand); border-radius: var(--m-radius); background: var(--m-brand); color: var(--paper); font-size: 13.5px; font-weight: 700; cursor: pointer; }
-.search-submit:hover { background: var(--m-brand-deep); border-color: var(--m-brand-deep); }
-.search-recent { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.search-recent-label { color: var(--m-ink-soft); font-family: var(--utility); font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-.search-chip { display: inline-flex; min-height: 36px; align-items: center; gap: 6px; padding: 0 13px; border: 1px solid var(--m-line); border-radius: 999px; background: var(--m-surface); color: var(--m-ink); font-size: 13px; font-weight: 600; }
-.search-chip:hover { border-color: var(--m-brand); color: var(--m-brand-deep); }
-.search-clear { min-height: 36px; padding: 0 10px; border: 0; background: none; color: var(--m-ink-soft); font-size: 12.5px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+/* The phone's own search field: shown only where the top bar is not. */
+.search-inline { display: none; }
+.search-inline-icon { display: grid; place-items: center; width: 18px; height: 18px; flex: none; color: var(--m-ink-soft); }
+.search-inline-icon svg { width: 18px; height: 18px; }
+.search-inline input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--m-ink); font: inherit; font-size: 14px; }
+.search-inline input:focus { outline: none; }
+.search-inline button { min-height: 44px; flex: none; padding: 0 15px; border: 1px solid var(--m-brand); border-radius: 999px; background: var(--m-brand); color: var(--paper); font-size: 12.5px; font-weight: 700; }
+.app-shell .search-inline button { color: var(--paper); }
 .search-group { display: grid; gap: 10px; }
 .search-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .search-group-head h2 { margin: 0; color: var(--m-ink); font-size: 14px; font-weight: 800; }
 .search-group-head a { color: var(--m-accent); font-size: 12.5px; font-weight: 700; }
-.search-services { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.search-services { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 
 /* ---------- Messages: a thread list beside the conversation ---------- */
 .pane { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 16px; align-items: start; }
@@ -196,11 +226,21 @@
 .pane-list > li + li { border-top: 1px solid var(--m-line); }
 .pane-main { min-width: 0; }
 .pane-blank { display: grid; justify-items: center; align-content: center; gap: 10px; min-height: 320px; padding: 40px 22px; border: 1px dashed var(--m-mist); border-radius: var(--m-radius-lg); text-align: center; }
+/* An inbox with nothing in it is one invitation, not a list beside a blank. */
+.pane[data-empty='true'] { grid-template-columns: minmax(0, 1fr); }
+.pane[data-empty='true'] .pane-main { display: none; }
+.pane-blank-invite { min-height: 380px; border-style: solid; background: var(--m-surface); }
 .pane-blank h2 { margin: 0; font-family: var(--display); font-size: 20px; font-weight: 600; }
 .pane-blank p { max-width: 320px; margin: 0; color: var(--m-ink-soft); font-size: 13px; }
-
-/* ---------- Mobile bottom nav ---------- */
-.app-bottomnav { display: none; }
+/* The messages screen's own search — it lives with the list, not the frame. */
+.conversation-pane { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.conversation-search { display: flex; align-items: center; gap: 9px; min-height: 44px; padding: 9px 16px; border: 1px solid var(--m-line); border-radius: 999px; background: var(--m-surface-2); transition: border-color 140ms ease, background 140ms ease; }
+.conversation-search:focus-within { border-color: var(--m-accent-soft); background: var(--m-surface); }
+.conversation-search-icon { display: grid; place-items: center; width: 18px; height: 18px; flex: none; color: var(--m-ink-soft); }
+.conversation-search-icon svg { width: 18px; height: 18px; }
+.conversation-search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--m-ink); font-family: inherit; font-size: 14px; }
+.conversation-search input:focus { outline: none; }
+.conversation-search input::placeholder { color: var(--m-ink-soft); }
 
 
 /* =========================================================================
@@ -208,33 +248,54 @@
    ========================================================================= */
 .shop { display: grid; gap: 16px; min-width: 0; }
 
-/* The counter — one question, and the area chips that answer it. */
-.shop-ask {
-  position: relative; overflow: hidden; padding: 27px 28px 23px;
+/*
+ * The counter board. The title answers the one question, and a single area
+ * control carries the choice that used to be a chip per town — so the first
+ * card is visible without scrolling through eight repeated counts.
+ */
+.shop-hero {
+  position: relative; overflow: hidden; display: flex; flex-wrap: wrap;
+  align-items: flex-end; justify-content: space-between; gap: 18px;
+  padding: 31px 28px 26px;
   border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface);
 }
-.shop-ask::before {
+.shop-hero::before {
   position: absolute; inset: 0 0 auto; height: 7px; content: '';
   background-image: radial-gradient(circle at 5px 7px, var(--m-bg) 3.6px, transparent 4px);
   background-size: 12px 7px; background-repeat: repeat-x;
 }
-.shop-ask-title { margin: 0 0 17px; font-family: var(--display); font-size: clamp(25px, 3vw, 34px); font-weight: 600; letter-spacing: -0.028em; line-height: 1.08; text-wrap: balance; }
-.shop-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.shop-chip { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; padding: 0 16px; border: 1px solid var(--m-line); border-radius: 999px; background: var(--m-surface); color: var(--m-ink); font-size: 13.5px; font-weight: 600; white-space: nowrap; transition: background 140ms ease, border-color 140ms ease, color 140ms ease; }
-.shop-chip:hover { border-color: var(--m-brand); color: var(--m-brand-deep); }
-.shop-chip.is-active { border-color: var(--m-ink); background: var(--m-ink); color: var(--paper); }
-.shop-chip-count { font-family: var(--utility); font-size: 10.5px; font-variant-numeric: tabular-nums; opacity: 0.62; }
+.shop-hero-title { margin: 0; font-family: var(--display); font-size: clamp(31px, 3.7vw, 44px); font-weight: 600; letter-spacing: -0.038em; line-height: 0.98; text-wrap: balance; }
+
+/* The area control is one native select under a drawn face: tappable at any
+   width, keyboard-reachable, and its counts live in the menu, not on the page. */
+.shop-area {
+  position: relative; display: flex; min-width: 218px; max-width: 100%;
+  align-items: center; gap: 11px; padding: 10px 14px;
+  border: 1px solid var(--m-line); border-radius: 12px; background: var(--m-surface-2);
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.shop-area:hover { border-color: var(--m-brand); background: var(--m-surface); }
+.shop-area:focus-within { border-color: var(--m-brand); outline: 3px solid var(--m-accent-soft); outline-offset: 2px; }
+.shop-area-icon { display: grid; place-items: center; width: 19px; height: 19px; flex: none; color: var(--m-brand); }
+.shop-area-icon svg { width: 19px; height: 19px; }
+.shop-area-copy { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.shop-area-label { color: var(--m-ink-soft); font-family: var(--utility); font-size: 8.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.shop-area-value { overflow: hidden; color: var(--m-ink); font-family: var(--display); font-size: 17px; font-weight: 600; letter-spacing: -0.015em; white-space: nowrap; text-overflow: ellipsis; }
+.shop-area-caret { display: grid; place-items: center; width: 16px; height: 16px; flex: none; color: var(--m-ink-soft); }
+.shop-area-caret svg { width: 16px; height: 16px; }
+.shop-area-select { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; opacity: 0; cursor: pointer; }
 
 /* Category index — labels and live counts, no decorative tiles. */
 .shop-index { display: flex; flex-wrap: wrap; gap: 2px; padding: 6px 8px; border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface); }
-.shop-tab { display: inline-flex; min-height: 44px; flex: 0 0 auto; align-items: baseline; gap: 7px; padding: 0 15px; border: 0; border-radius: 999px; background: transparent; color: var(--m-ink-soft); font-size: 13.5px; font-weight: 600; white-space: nowrap; transition: background 140ms ease, color 140ms ease; }
+.shop-tab { display: inline-flex; min-height: 44px; flex: 0 0 auto; align-items: center; gap: 7px; padding: 0 15px; border: 0; border-radius: 999px; background: transparent; color: var(--m-ink-soft); font-size: 13.5px; font-weight: 600; white-space: nowrap; transition: background 140ms ease, color 140ms ease; }
 .shop-tab:hover { background: var(--m-surface-2); color: var(--m-ink); }
 .shop-tab.is-active { background: var(--m-ink); color: var(--paper); }
 .shop-tab-count { font-family: var(--utility); font-size: 10.5px; font-variant-numeric: tabular-nums; opacity: 0.62; }
 
 /* Results, saved filter, and sort */
 .shop-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 14px; background: var(--m-surface); border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); }
-.shop-result-count { margin: 0; font-size: 13px; font-weight: 700; color: var(--m-ink); }
+.shop-result-count { margin: 0; color: var(--m-ink-soft); font-family: var(--utility); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
+.shop-result-count strong { margin-right: 3px; color: var(--m-ink); font-family: var(--display); font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
 .shop-toolbar-actions { display: flex; align-items: center; gap: 8px; }
 .shop-saved-toggle { display: inline-flex; min-height: 44px; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid var(--m-line); border-radius: var(--m-radius); background: var(--m-surface); color: var(--m-ink); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .shop-saved-toggle:hover, .shop-saved-toggle[aria-pressed='true'] { border-color: var(--m-brand); background: var(--m-brand-wash); color: var(--m-brand-deep); }
@@ -246,6 +307,8 @@
 .shop-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
 .shop-reset { grid-column: 1 / -1; justify-self: center; min-height: 44px; padding: 0 20px; border: 1px solid var(--m-line); border-radius: 999px; background: var(--m-surface); color: var(--m-ink); font-size: 13px; font-weight: 600; transition: border-color 140ms ease, color 140ms ease; }
 .shop-reset:hover { border-color: var(--m-brand); color: var(--m-brand-deep); }
+.shop-load-more { grid-column: 1 / -1; justify-self: center; min-height: 44px; padding: 0 22px; border: 1px solid var(--m-line); border-radius: 999px; background: var(--m-surface); color: var(--m-ink); font-size: 13px; font-weight: 600; transition: border-color 140ms ease, color 140ms ease; }
+.shop-load-more:hover { border-color: var(--m-brand); color: var(--m-brand-deep); }
 .shop-empty { grid-column: 1 / -1; display: grid; justify-items: center; gap: 8px; text-align: center; padding: 56px 24px; background: var(--m-surface); border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); }
 .shop-empty-icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--m-surface-2); color: var(--m-ink-soft); }
 .shop-empty-icon svg { width: 24px; height: 24px; }
@@ -258,41 +321,64 @@
 .shop-foot svg { width: 14px; height: 14px; flex: 0 0 14px; }
 
 
-/* ---------- Service ticket ---------- */
-.svc-card { display: flex; flex-direction: column; overflow: hidden; background: var(--m-surface); border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); box-shadow: var(--m-shadow-sm); transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease; }
+/*
+ * Service card as a printed ticket: a short colour band, the service and its
+ * one line of facts, then a perforated footer where the price and the request
+ * sit together. The band is 16:9 rather than square, which is what lets two
+ * full cards, not one and a half, land above the fold on a phone.
+ */
+.svc-card { position: relative; display: flex; flex-direction: column; overflow: hidden; background: var(--m-surface); border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); box-shadow: var(--m-shadow-sm); transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease; }
 .svc-card:hover { transform: translateY(-3px); box-shadow: var(--m-shadow); border-color: var(--m-mist); }
 .svc-card-media { position: relative; }
-.svc-thumb { position: relative; display: grid; place-items: center; width: 100%; height: 88px; overflow: hidden; }
-.svc-glyph { width: 42px; height: 42px; color: rgba(246, 245, 241, 0.92); }
-.svc-card-cat { position: absolute; top: 10px; left: 10px; padding: 4px 9px; border-radius: 999px; background: rgba(255, 254, 252, 0.92); color: var(--m-ink); font-family: var(--utility); font-size: 9.5px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
-.svc-card-body { display: grid; gap: 9px; padding: 15px 16px 2px; }
-.svc-card-title { margin: 0; font-family: var(--display); font-size: 16.5px; font-weight: 600; line-height: 1.26; color: var(--m-ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.52em; }
-.svc-card-provider { display: flex; align-items: center; gap: 8px; margin: 0; min-width: 0; font-size: 12.5px; color: var(--m-ink-soft); }
+.svc-thumb { position: relative; display: grid; place-items: center; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; }
+.svc-glyph { width: 48px; height: 48px; color: rgba(246, 245, 241, 0.9); transition: transform 220ms ease; }
+.svc-card:hover .svc-glyph { transform: scale(1.08); }
+.svc-card-cat { position: absolute; top: 10px; left: 10px; padding: 4px 9px; border-radius: 999px; background: rgba(255, 254, 252, 0.92); color: var(--m-ink); font-family: var(--utility); font-size: 9px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
+/* Save rides on the picture, so the text below is all facts. */
+.svc-save { position: absolute; top: 8px; right: 8px; display: grid; width: 44px; height: 44px; place-items: center; border: 0; border-radius: 50%; background: rgba(255, 254, 252, 0.92); color: var(--m-ink); transition: color 140ms ease, background 140ms ease, transform 140ms ease; }
+.svc-save:hover { background: var(--paper); color: var(--m-brand-deep); transform: scale(1.06); }
+.svc-save[aria-pressed='true'] { color: var(--m-brand); }
+.svc-save svg { width: 18px; height: 18px; }
+
+/* The picture and the title are both doors into the listing; the title is the
+   one the tab order and a screen reader announce, so the picture's link is
+   hidden from both. Its hover lives on the card, which already lifts. */
+.svc-card-art { display: block; }
+.svc-card-title a { color: inherit; text-decoration: none; }
+.svc-card-title a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.svc-card-title a:focus-visible { outline: 2px solid var(--m-brand); outline-offset: 2px; border-radius: 4px; }
+
+.svc-card-body { display: flex; flex: 1; flex-direction: column; gap: 5px; padding: 14px 15px 0; }
+.svc-card-body > .svc-card-meta { margin-bottom: 10px; }
+.svc-card-title { display: -webkit-box; overflow: hidden; margin: 0; color: var(--m-ink); font-family: var(--display); font-size: 16px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.28; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.svc-card-provider { display: flex; align-items: center; gap: 6px; min-width: 0; margin: 0; font-size: 12.5px; color: var(--m-ink-soft); }
 .svc-card-name { overflow: hidden; color: var(--m-ink-soft); text-overflow: ellipsis; white-space: nowrap; }
 .svc-card-name:hover { color: var(--m-brand-deep); text-decoration: underline; text-underline-offset: 3px; }
-.svc-verified { flex: 0 0 auto; padding: 2px 7px; border: 1px solid rgba(109, 129, 150, 0.4); border-radius: 999px; background: var(--m-brand-wash); color: var(--m-brand-deep); font-family: var(--utility); font-size: 8.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.svc-verified { display: inline-grid; place-items: center; width: 14px; height: 14px; flex: 0 0 14px; color: var(--m-brand); }
+.svc-verified svg { width: 14px; height: 14px; }
 
-/* The ledger: dotted leaders carry the same receipt language as the docket. */
-.svc-ledger { display: grid; gap: 6px; margin: 0; padding-top: 12px; border-top: 1px dashed var(--m-mist); }
-.svc-ledger > div { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-.svc-ledger dt { flex: 0 0 auto; color: var(--m-ink-soft); font-family: var(--utility); font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
-.svc-leader { flex: 1 1 auto; height: 0; border-bottom: 1px dotted var(--m-mist); transform: translateY(-3px); }
-.svc-ledger dd { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 4px; margin: 0; color: var(--m-ink); font-size: 12.5px; font-variant-numeric: tabular-nums; }
-.svc-ledger dd svg { width: 13px; height: 13px; color: var(--m-brand); }
-.svc-ledger-from { padding-top: 8px; border-top: 1px solid var(--m-line); }
-.svc-ledger-from dt { color: var(--m-brand-deep); font-size: 10px; }
-.svc-ledger .svc-price { font-family: var(--display); font-size: 20px; font-weight: 600; color: var(--m-brand); }
+/* One line of facts: the rating and the area. Replies live on the profile. */
+.svc-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 0; color: var(--m-ink-soft); font-size: 12px; }
+.svc-meta-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--m-mist); }
+.svc-card-area { display: inline-flex; align-items: center; gap: 4px; }
+.svc-card-area svg { width: 12px; height: 12px; color: var(--m-brand); }
 
-/* Perforated foot — the ticket is torn off here. */
-.svc-card-foot { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 15px; padding: 14px 16px 15px; border-top: 1px dashed var(--m-mist); background: var(--m-surface-2); }
-.svc-card-foot::before { position: absolute; top: -7px; left: 0; right: 0; height: 7px; content: ''; background-image: radial-gradient(circle at 5px 7px, var(--m-surface) 3.4px, transparent 3.8px); background-size: 11px 7px; background-repeat: repeat-x; }
-.svc-book { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; padding: 0 22px; border: 1px solid var(--m-brand); border-radius: 8px; background: var(--m-brand); color: var(--paper); font-size: 13.5px; font-weight: 700; font-family: inherit; transition: background 140ms ease, border-color 140ms ease; }
+/* The perforated footer: a dashed rule with a notch cut into each edge, the
+   same device the work-order docket uses at the top of the account page. */
+.svc-card-ticket { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: auto -15px 0; padding: 8px 15px 10px; border-top: 1px dashed var(--m-line); background: var(--m-surface-2); }
+.svc-card-ticket::before, .svc-card-ticket::after { position: absolute; top: -6px; width: 12px; height: 12px; border-radius: 50%; background: var(--m-bg); content: ''; }
+.svc-card-ticket::before { left: -6px; }
+.svc-card-ticket::after { right: -6px; }
+.svc-price-row { display: flex; align-items: baseline; gap: 4px; margin: 0; }
+.svc-price-from { color: var(--m-ink-soft); font-family: var(--utility); font-size: 8.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.svc-price { margin: 0; color: var(--m-brand); font-family: var(--display); font-size: 19px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.05; white-space: nowrap; }
+.svc-price.is-quote { color: var(--m-ink-soft); font-family: var(--body); font-size: 12.5px; font-weight: 600; letter-spacing: 0; }
+
+.svc-book { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 3px; padding: 0 12px; border: 1px solid var(--m-brand); border-radius: 999px; background: var(--m-brand); color: var(--paper); font-family: inherit; font-size: 12.5px; font-weight: 700; white-space: nowrap; transition: background 140ms ease, border-color 140ms ease; }
 .app-shell .svc-book, .app-shell .book-primary { color: var(--paper); }
 .svc-book:hover { background: var(--m-brand-deep); border-color: var(--m-brand-deep); }
-.svc-save { display: grid; width: 44px; height: 44px; flex: 0 0 44px; place-items: center; border: 1px solid var(--m-line); border-radius: 8px; background: var(--m-surface); color: var(--m-ink); transition: color 140ms ease, border-color 140ms ease, background 140ms ease; }
-.svc-save:hover { border-color: var(--m-brand); color: var(--m-brand-deep); }
-.svc-save[aria-pressed='true'] { border-color: var(--m-brand); background: var(--m-brand-wash); color: var(--m-brand); }
-.svc-save svg { width: 18px; height: 18px; }
+.svc-book-arrow { display: grid; place-items: center; width: 13px; height: 13px; }
+.svc-book-arrow svg { width: 13px; height: 13px; }
 
 /* Star rating is shared with the booking dialog. */
 .stars { display: inline-flex; align-items: center; gap: 4px; }
@@ -341,6 +427,9 @@
 .pv-svc-art .svc-glyph { width: 28px; height: 28px; }
 .pv-svc-copy { display: grid; gap: 6px; min-width: 0; }
 .pv-svc-title { margin: 0; font-family: var(--display); font-size: 17px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.25; }
+.pv-svc-title a { color: inherit; text-decoration: none; }
+.pv-svc-title a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.pv-svc-title a:focus-visible { outline: 2px solid var(--m-brand); outline-offset: 2px; border-radius: 4px; }
 .pv-svc-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; color: var(--m-ink-soft); font-family: var(--utility); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
 .pv-svc-meta svg { width: 13px; height: 13px; }
 .pv-dot { color: var(--m-mist); }
@@ -388,8 +477,15 @@
 .book-label { display: block; margin: 18px 0 8px; font-size: 13.5px; font-weight: 700; }
 .book-input { width: 100%; border: 1px solid var(--m-line); border-radius: var(--m-radius); padding: 11px 13px; font-size: 14px; font-family: inherit; color: var(--m-ink); background: var(--m-surface-2); resize: vertical; }
 .book-input:focus { outline: 2px solid var(--m-accent-soft); outline-offset: 1px; background: var(--m-surface); }
+/* The same graded hover the rest of the app prints on fields. */
+.book-input:hover, .thread-composer textarea:hover, .dispute-reason:hover,
+.job-input:hover { border-color: color-mix(in srgb, var(--m-mist) 72%, var(--m-ink)); }
 .book-error { margin: 10px 0 0; font-size: 13px; color: var(--m-brand-deep); font-weight: 600; }
 .book-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; }
+/* Signed-out sheet: read the listing, then step through the sign-in door. */
+.book-gated { display: grid; gap: 16px; }
+.book-gated p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--m-ink-soft); }
+.book-gated .book-primary { justify-self: start; }
 .book-note { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--m-ink-soft); }
 .book-note svg { width: 15px; height: 15px; color: var(--m-brand); }
 .book-primary { padding: 11px 22px; border: 1px solid var(--m-brand); border-radius: 8px; background: var(--m-brand); color: var(--paper); font-size: 14.5px; font-weight: 700; font-family: inherit; transition: background 140ms ease; }
@@ -404,7 +500,6 @@
 /* =========================================================================
    Account area (inside the shared shell)
    ========================================================================= */
-.acct { display: grid; gap: 18px; }
 
 /* The account area's own column width; the rail is supplied by the shell. */
 .account-page { display: grid; gap: 24px; }
@@ -417,10 +512,191 @@
 .account-section-note { font-family: var(--utility); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--m-ink-soft); }
 .account-section-link { color: var(--m-accent); font-size: 12px; font-weight: 600; }
 .account-section-lede { margin: -6px 0 0; color: var(--m-ink-soft); font-size: 12.5px; line-height: 1.6; }
-.account-card { border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface); box-shadow: var(--m-shadow-sm); }
-.account-card-category { font-family: var(--utility); font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--m-brand); }
-.account-card-price { font-family: var(--display); color: var(--m-brand); }
+
+/* The account's identity card — heading, profile door and Settings in one. */
+.account-hero { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px; border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface); }
+.account-hero-id { display: flex; align-items: center; gap: 14px; min-width: 0; border-radius: var(--m-radius); }
+.account-hero-avatar { display: grid; place-items: center; width: 52px; height: 52px; flex: 0 0 52px; border-radius: 50%; background: var(--m-ink); color: var(--paper); font-family: var(--display); font-size: 23px; font-weight: 700; }
+.account-hero-copy { display: grid; gap: 1px; min-width: 0; }
+.account-hero-eyebrow { color: var(--m-ink-soft); font-family: var(--utility); font-size: 8.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.account-hero-name { margin: 0; color: var(--m-ink); font-family: var(--display); font-size: clamp(21px, 2.4vw, 26px); font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; }
+.account-hero-area { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-top: 2px; color: var(--m-ink-soft); font-size: 12px; }
+.account-hero-edit { color: var(--m-brand-deep); font-family: var(--utility); font-size: 8.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.account-hero-id:hover .account-hero-name { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.account-hero-id:hover .account-hero-edit { color: var(--m-ink); }
+.account-hero-settings { display: inline-flex; min-height: 42px; align-items: center; gap: 7px; padding: 0 14px; border: 1px solid var(--m-line); border-radius: var(--m-radius); background: var(--m-surface); color: var(--m-ink); font-size: 12.5px; font-weight: 600; }
+.account-hero-settings:hover { border-color: var(--m-brand); color: var(--m-brand-deep); }
+.account-hero-settings svg { width: 17px; height: 17px; }
+
+/* Four figures, one tap each: the counts that used to be six repeated rows. */
+.account-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.account-stat { display: grid; gap: 3px; min-height: 82px; align-content: center; padding: 13px 15px; border: 1px solid var(--m-line); border-radius: var(--m-radius); background: var(--m-surface); transition: border-color 140ms ease, background 140ms ease; }
+.account-stat:hover { border-color: var(--m-brand); background: var(--m-surface-2); }
+.account-stat-value { color: var(--m-brand-deep); font-family: var(--display); font-size: 27px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.account-stat-label { color: var(--m-ink-soft); font-family: var(--utility); font-size: 8.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
+.account-quiet { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border: 1px dashed var(--m-mist); border-radius: var(--m-radius); background: var(--m-surface); }
+.account-quiet p { margin: 0; color: var(--m-ink-soft); font-size: 13px; }
+.account-section-link-icon { display: inline-grid; place-items: center; width: 12px; height: 12px; margin-left: 3px; }
+.account-section-link-icon svg { width: 12px; height: 12px; }
+
+/* ---------- Settings: identity header and four grouped cards ---------- */
+.settings-page { gap: 20px; }
+.settings-hero { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 20px 22px; border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface); }
+.settings-hero-avatar { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--m-ink); color: var(--paper); font-family: var(--display); font-size: 25px; font-weight: 700; }
+.settings-hero-copy { display: grid; gap: 1px; min-width: 0; }
+.settings-hero-eyebrow { color: var(--m-ink-soft); font-family: var(--utility); font-size: 8.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.settings-hero .screen-title { margin: 0; font-size: clamp(23px, 2.6vw, 29px); }
+.settings-hero-line { overflow: hidden; margin: 2px 0 0; color: var(--m-ink-soft); font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+.settings-hero-since { align-self: start; color: var(--m-ink-soft); font-family: var(--utility); font-size: 8.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+.settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.settings-col { display: grid; gap: 18px; align-content: start; }
+.settings-grid .account-section { gap: 9px; }
+.settings-grid .account-section-head h2 { color: var(--m-ink-soft); font-family: var(--utility); font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.settings-grid .row { min-height: 58px; }
+.settings-foot { display: flex; justify-content: flex-end; padding-top: 4px; }
+.settings-foot .quiet-button { min-height: 40px; }
+
+/* ---------- Settings sub-screens: the index's cards, one group at a time ---------- */
+/* A row that is a setting rather than a door: same card, same label and value
+   scale as the index, with the control where a door's chevron would sit. */
+.row-field { cursor: default; }
+.row-field:hover { background: transparent; }
+.row-field-plain { grid-template-columns: minmax(0, 1fr) auto; }
+.row-control { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
+.row-field .row-value { white-space: normal; }
+
+/* Group labels read like the index's: small, uppercase, quiet. */
+.settings-detail { gap: 20px; }
+.settings-detail .account-section { gap: 9px; }
+.settings-detail .account-section-head h2 {
+  color: var(--m-ink-soft);
+  font-family: var(--utility);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* The control card is the index's `.row-list` in a different wrapper, so form
+   rows and fact rows read as the same list. */
+.settings-detail .set-rows {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--m-line);
+  border-radius: var(--m-radius-lg);
+  background: var(--m-surface);
+  box-shadow: var(--m-shadow-sm);
+}
+.settings-detail .set-row { gap: 14px; padding: 13px 16px; }
+.settings-detail .set-row + .set-row { border-top: 1px solid var(--m-line); }
+.settings-detail .set-row-copy { gap: 3px; }
+.settings-detail .set-row-label { color: var(--m-ink); font-size: 14px; font-weight: 700; }
+.settings-detail .set-row-note { max-width: 62ch; color: var(--m-ink-soft); font-size: 12.5px; line-height: 1.45; }
+.settings-detail .account-section > .set-row-note {
+  padding: 13px 16px;
+  border: 1px dashed var(--m-mist);
+  border-radius: var(--m-radius-lg);
+  background: var(--m-surface);
+}
+
+/* Fields, buttons and stamps wear the shell's tokens. */
+.settings-detail .set-form { gap: 18px; }
+.settings-detail .set-lede { max-width: 62ch; margin: 0; font-size: 12.5px; line-height: 1.5; }
+.settings-detail .set-fields {
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--m-line);
+  border-radius: var(--m-radius-lg);
+  background: var(--m-surface);
+  box-shadow: var(--m-shadow-sm);
+}
+.settings-detail .set-input, .settings-detail .set-select {
+  min-width: 220px;
+  padding: 0 12px;
+  border: 1px solid var(--m-line);
+  border-radius: var(--m-radius);
+  background: var(--m-surface-2);
+  color: var(--m-ink);
+  font-size: 13.5px;
+}
+.settings-detail .set-input:focus, .settings-detail .set-select:focus { outline: 3px solid var(--m-accent-soft); outline-offset: 2px; background: var(--m-surface); }
+.settings-detail .set-readonly { padding: 10px 12px; border: 1px dashed var(--m-mist); border-radius: var(--m-radius); color: var(--m-ink-soft); font-size: 11.5px; }
+.settings-detail .set-save { border: 1px solid var(--m-brand); border-radius: var(--m-radius); background: var(--m-brand); }
+.settings-detail .set-save:hover { background: var(--m-brand-deep); border-color: var(--m-brand-deep); }
+.settings-detail .set-secondary { border: 1px solid var(--m-line); border-radius: var(--m-radius); background: var(--m-surface); color: var(--m-ink); }
+.settings-detail .set-secondary:hover { border-color: var(--m-brand); color: var(--m-brand-deep); }
+.settings-detail .set-gate { border: 1px solid var(--m-line); border-radius: 999px; background: var(--m-surface-2); color: var(--m-ink-soft); }
+.settings-detail .set-gated {
+  padding: 13px 16px;
+  border: 1px dashed var(--m-mist);
+  border-radius: var(--m-radius-lg);
+  background: var(--m-surface);
+  color: var(--m-ink-soft);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.settings-detail .set-switch { border-color: var(--m-line); border-radius: 999px; background: var(--m-surface); }
+.settings-detail .set-switch-track { background: var(--m-mist); }
+.settings-detail .set-switch-thumb { background: var(--m-surface); }
+.settings-detail .set-switch[aria-checked='true'] { border-color: var(--m-brand); }
+.settings-detail .set-switch[aria-checked='true'] .set-switch-track { background: var(--m-brand); }
+.settings-detail .set-channels { border-top: 1px solid var(--m-line); background: var(--m-surface-2); }
+.settings-detail .set-channel { border-color: var(--m-line); border-radius: 999px; background: var(--m-surface); }
+.settings-detail .set-status[data-tone='ok'] { color: var(--m-brand-deep); }
+
+/* Profile: the same cards, applied to the identity preview and the editor. */
+.settings-detail .identity-panel { gap: 20px; padding: 20px; border-color: var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface); }
+.settings-detail .identity-avatar { background: var(--m-ink); }
+.settings-detail .identity-name { font-size: 23px; }
+.settings-detail .identity-meta svg { color: var(--m-brand); }
+.settings-detail .identity-about { max-width: 62ch; font-size: 12.5px; line-height: 1.5; }
+.settings-detail .prof-fields {
+  gap: 16px;
+  padding: 16px;
+  border-color: var(--m-line);
+  border-radius: var(--m-radius-lg);
+  background: var(--m-surface);
+  box-shadow: var(--m-shadow-sm);
+}
+.settings-detail .prof-note { font-size: 12.5px; line-height: 1.45; }
+.settings-detail .prof-input, .settings-detail .prof-select, .settings-detail .prof-textarea {
+  border-color: var(--m-line);
+  border-radius: var(--m-radius);
+  background: var(--m-surface-2);
+  color: var(--m-ink);
+}
+.settings-detail .prof-input:focus, .settings-detail .prof-select:focus, .settings-detail .prof-textarea:focus { outline: 3px solid var(--m-accent-soft); outline-offset: 2px; background: var(--m-surface); }
+.settings-detail .method-list li { border-top-color: var(--m-line); }
+.settings-detail .method-list li:last-child { border-bottom-color: var(--m-line); }
+.settings-detail .method-label { font-size: 14px; font-weight: 700; }
+.settings-detail .method-stamp { border-color: var(--m-line); border-radius: 999px; background: var(--m-surface-2); }
+.settings-detail .method-list li[data-connected='true'] .method-stamp { border-color: var(--m-brand); background: var(--m-brand-wash); color: var(--m-brand-deep); }
+.settings-detail .session-panel { border-color: var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface); }
+.settings-detail .session-panel p { font-size: 12.5px; line-height: 1.5; }
+
+/* Blocked accounts and the delete panel keep their behaviour; only the surface
+   and the type scale change. */
+.settings-detail .blocked-list { gap: 0; padding: 0 16px; border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface); }
+.settings-detail .blocked-row { border-top: 1px solid var(--m-line); }
+.settings-detail .blocked-row:first-child { border-top: 0; }
+.settings-detail .blocked-name { font-size: 14px; font-weight: 700; }
+.settings-detail .job-media-hint { font-size: 12.5px; line-height: 1.45; }
+.settings-detail .delete-panel { gap: 12px; margin-top: 0; }
+.settings-detail .delete-facts { padding: 0 16px; border-color: var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface); }
+.settings-detail .delete-facts dt { color: var(--m-brand-deep); }
+.settings-detail .delete-facts dd { font-size: 12.5px; line-height: 1.45; }
+.settings-detail .delete-confirm { border-radius: var(--m-radius-lg); background: var(--m-surface); }
+.settings-detail .delete-blockers { border-radius: var(--m-radius-lg); }
+
+/* Phone: a control row drops under its label instead of squeezing beside it. */
+@media (max-width: 760px) {
+  .row-field { grid-template-columns: auto minmax(0, 1fr); }
+  .row-field .row-control { grid-column: 1 / -1; justify-content: flex-start; }
+  .row-field-plain { grid-template-columns: minmax(0, 1fr); }
+  .settings-detail .set-input, .settings-detail .set-select { min-width: 0; width: 100%; }
+}
 .button-primary { background: var(--m-brand); border-color: var(--m-brand); color: var(--paper); border-radius: 8px; }
+.app-shell .button-primary { color: var(--paper); }
 .button-primary:hover { background: var(--m-brand-deep); border-color: var(--m-brand-deep); }
 .quiet-button { border-radius: 8px; border-color: var(--m-line); }
 .quiet-button:hover { border-color: var(--m-accent-soft); color: var(--m-accent); }
@@ -435,11 +711,9 @@
 .conversation-copy { display: grid; flex: 1; gap: 4px; min-width: 0; }
 .conversation-topline { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .conversation-topline strong { overflow: hidden; color: var(--m-ink); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
-.conversation-topline time, .conversation-reference { flex: 0 0 auto; color: var(--m-ink-soft); font-family: var(--utility); font-size: 9.5px; }
+.conversation-topline time { flex: 0 0 auto; color: var(--m-ink-soft); font-family: var(--utility); font-size: 9.5px; }
 .conversation-service { overflow: hidden; color: var(--m-ink); font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .conversation-last-message { overflow: hidden; color: var(--m-ink-soft); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.conversation-arrow { display: grid; flex: 0 0 18px; place-items: center; color: var(--m-ink-soft); }
-.conversation-arrow svg { width: 18px; height: 18px; }
 .account-empty-mark svg { width: 23px; height: 23px; }
 .message-thread { display: grid; gap: 16px; min-width: 0; }
 .thread-back { display: inline-flex; width: fit-content; min-height: 44px; align-items: center; gap: 7px; color: var(--m-accent); font-size: 13px; font-weight: 700; }
@@ -448,7 +722,6 @@
 .thread-heading > div { min-width: 0; }
 .thread-counterpart { overflow: hidden; margin: 0; color: var(--m-ink-soft); font-family: var(--utility); font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
 .thread-heading h2 { overflow: hidden; margin: 0 0 3px; color: var(--m-ink); font-family: var(--display); font-size: 18px; line-height: 1.25; text-overflow: ellipsis; }
-.thread-reference { margin: 5px 0 0; color: var(--m-ink-soft); font-family: var(--utility); font-size: 10px; }
 /* The list is always visible beside the thread on a wide screen. */
 @media (min-width: 901px) { .thread-back { display: none; } }
 .thread-history { display: grid; align-content: start; gap: 12px; min-height: 220px; max-height: 52dvh; overflow: auto; margin: 0; padding: 18px; border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface); list-style: none; }
@@ -471,41 +744,72 @@
 .thread-closed { margin: 0; padding: 12px 14px; border: 1px solid var(--m-line); border-radius: var(--m-radius); background: var(--m-surface-2); color: var(--m-ink-soft); font-size: 13px; }
 
 
-/* ---------- Mobile bottom nav ---------- */
-.app-bottomnav { display: none; }
-
 /* ---------- Responsive ---------- */
 @media (max-width: 1080px) {
   .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .app-top-action-label { display: none; }
-  .app-top-action { padding: 0 12px; }
 }
 
-/* The rail gives way to the bottom tab bar before the content gets cramped. */
-@media (max-width: 1000px) {
-  .app-shell-body { grid-template-columns: minmax(0, 1fr); gap: 18px; }
-  .app-sidebar { display: none; }
+/* The install strip follows the frame's own padding at every width, and on a
+   phone the copy takes the width so the two actions stay reachable. */
+@media (max-width: 860px) {
+  .app-install-wrap { padding: 12px 14px 0; }
+}
+
+@media (max-width: 520px) {
+  .app-install { flex-wrap: wrap; padding: 12px; }
+  .app-install-copy { flex: 1 1 100%; }
+  .app-install-actions { width: 100%; margin-left: 0; }
+  .app-install-go, .app-install-later { flex: 1 1 auto; justify-content: center; }
 }
 
 /* One conversation at a time: the list steps aside for the thread it opened. */
 @media (max-width: 900px) {
   .pane { grid-template-columns: minmax(0, 1fr); }
   .pane[data-thread='open'] .pane-list { display: none; }
+  .pane[data-thread='open'] .conversation-search { display: none; }
 }
 
-@media (max-width: 860px) {
-  .app-shell-body { padding: 16px 14px 96px; }
-  .app-topbar-inner { padding: 10px 14px; gap: 10px; }
-  .app-brand-word { display: none; }
-  .app-account-name { display: none; }
-  .app-topsearch { max-width: none; min-width: 0; padding-inline: 12px; }
-  .shop-ask { padding: 22px 20px 19px; }
-  .shop-index { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; }
-  .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .shop-toolbar { align-items: center; }
-  .search-services { grid-template-columns: minmax(0, 1fr); }
-  .me-card { padding: 16px; gap: 13px; }
-  .me-avatar { width: 50px; height: 50px; flex-basis: 50px; font-size: 22px; }
+/* =========================================================================
+   NAVIGATION — the one place that decides what navigation each width shows.
+   The shell renders the rail, the bottom tab bar and the whole top bar at
+   every width; only the rules below decide what a visitor actually gets:
+
+     ≥ 1001px  The left rail (.app-sidebar) beside the content, under the
+               full top bar: logo, search, and the Alerts button with its
+               word. Backing out is each screen's own in-content back link.
+     ≤ 1080px  The Alerts button drops its word and keeps its icon — its
+               accessible name never depends on the visible text alone
+               (see notification-bell.tsx).
+     ≤ 1000px  The rail gives way to the bottom tab bar (.app-bottomnav)
+               before the content gets cramped: the same destinations, fixed
+               under the thumb, and the content clears it. The top bar does
+               not move, so search and Alerts stay where they were.
+     ≤ 860px   Phone. The tab bar stays. The top bar is home's alone: `/` and
+               `/home` keep the brand, search and Alerts, and every other
+               screen hides the whole bar and starts at its own heading. A
+               screen that drills in shows its own back link again, so there
+               is exactly one way back and no strip repeating what the page
+               already says (the shell's `is-home-view` class, set in
+               app-shell.tsx, is what marks home).
+
+   Together these keep exactly one of the two <nav>s visible at every width:
+   the rail from 1001px up, the tab bar from 1000px down — never neither (the
+   861–1000 hole this replaced), never both.
+   ========================================================================= */
+
+/* The tab bar starts off; only the rule below turns it on. */
+.app-bottomnav { display: none; }
+
+/* ≤1080: the top bar's action buttons keep their icons and lose their words. */
+@media (max-width: 1080px) {
+  .app-top-action-label { display: none; }
+  .app-top-action { padding: 0 12px; }
+}
+
+/* ≤1000: the rail hands navigation to the tab bar. */
+@media (max-width: 1000px) {
+  .app-shell-body { grid-template-columns: minmax(0, 1fr); gap: 18px; padding-bottom: 96px; }
+  .app-sidebar { display: none; }
 
   .app-bottomnav {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
@@ -519,6 +823,46 @@
   .app-bottomnav-icon { position: relative; display: grid; place-items: center; width: 26px; height: 26px; }
   .app-bottomnav-icon svg { width: 22px; height: 22px; }
   .app-bottomnav-badge { position: absolute; top: -4px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px; display: grid; place-items: center; border-radius: 999px; background: var(--m-brand); color: var(--paper); font-family: var(--utility); font-size: 10px; font-weight: 700; }
+}
+
+/* ≤860: the top bar belongs to home alone. Every other screen starts at its
+   own heading and moves through the bottom tabs, so the phone never spends the
+   first 60px repeating a brand and a search field the screen cannot use. The
+   screens that drill in carry their own back link again. */
+@media (max-width: 860px) {
+  .app-shell:not(.is-home-view) .app-topbar { display: none; }
+  .thread-back, .screen-back { display: inline-flex; }
+  .app-topbar-inner { padding: 10px 14px; gap: 10px; }
+  .app-brand-word { display: none; }
+  .app-search { max-width: none; }
+  .app-topsearch { padding-inline: 12px; }
+
+  .phone-title {
+    position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto;
+    white-space: normal; color: var(--m-ink); font-family: var(--display);
+    font-size: clamp(24px, 7vw, 30px); font-weight: 600; letter-spacing: -0.024em; line-height: 1.1;
+  }
+  .search-inline {
+    display: flex; align-items: center; gap: 9px; min-height: 48px;
+    padding: 2px 6px 2px 14px; border: 1px solid var(--m-line); border-radius: 999px;
+    background: var(--m-surface-2);
+  }
+  .search-inline:focus-within { border-color: var(--m-brand); outline: 3px solid var(--m-accent-soft); outline-offset: 2px; }
+}
+
+/* Phone layout — the rest of the ≤860 pass, which is styling rather than
+   navigation: the content clears the tab bar and the wide furniture folds in. */
+@media (max-width: 860px) {
+  .app-shell-body { padding: 16px 14px 96px; }
+  .shop-hero { padding: 25px 20px 21px; }
+  .shop-index { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+  .shop-index::-webkit-scrollbar { display: none; }
+  .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .shop-toolbar { align-items: center; }
+  .search-services { grid-template-columns: minmax(0, 1fr); }
+  .settings-grid { grid-template-columns: minmax(0, 1fr); }
+  .settings-col { gap: 16px; }
+  .account-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 760px) {
@@ -539,21 +883,26 @@
   .app-topbar-actions { gap: 6px; }
   .app-top-action { padding-inline: 10px; }
   .shop { gap: 14px; }
-  .shop-ask { padding: 19px 16px 16px; }
-  .shop-ask-title { margin-bottom: 13px; font-size: clamp(23px, 7.5vw, 28px); }
-  .shop-chip { padding: 0 13px; font-size: 12.5px; }
+  .shop-hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 23px 16px 17px; }
+  .shop-hero-title { font-size: clamp(28px, 8.4vw, 35px); }
+  .shop-area { width: 100%; }
   .shop-tab { padding: 0 12px; font-size: 12.5px; }
   .shop-toolbar { display: grid; gap: 8px; padding: 9px 11px; }
-  .shop-toolbar-actions { width: 100%; }
-  .shop-sortwrap { flex: 1; min-width: 0; }
-  .shop-sort { width: 100%; min-width: 0; }
+  .shop-toolbar-actions { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); gap: 8px; width: 100%; }
+  .shop-saved-toggle { padding-inline: 12px; }
+  .shop-saved-label { display: none; }
+  .shop-sortwrap { min-width: 0; }
+  .shop-sort { width: 100%; min-width: 0; padding-inline: 8px; font-size: 11.5px; }
   .shop-grid { grid-template-columns: 1fr; gap: 12px; }
-  .svc-thumb { height: 78px; }
-  .svc-card-body { padding: 13px 14px 2px; }
-  .svc-card-title { font-size: 15.5px; }
-  .svc-card-foot { padding: 12px 14px 13px; }
-  .svc-book { flex: 1; }
   .shop-foot { align-items: flex-start; font-size: 10px; }
+  .account-hero { padding: 15px 16px; }
+  .account-hero-settings { min-height: 40px; }
+  .account-stats { gap: 8px; }
+  .account-stat { min-height: 72px; padding: 11px 13px; }
+  .account-stat-value { font-size: 24px; }
+  .settings-hero { grid-template-columns: auto minmax(0, 1fr); gap: 12px; padding: 16px; }
+  .settings-hero-since { grid-column: 2; }
+  .settings-hero-avatar { width: 48px; height: 48px; font-size: 21px; }
   .book-dialog { max-height: calc(100dvh - 24px); overflow-y: auto; }
   .book-sheet { padding: 18px; }
   .book-head { grid-template-columns: 72px minmax(0, 1fr); gap: 10px; }
@@ -562,7 +911,7 @@
   .conversation-row { min-height: 88px; gap: 10px; padding: 12px 10px; }
   .conversation-avatar { flex-basis: 40px; width: 40px; height: 40px; font-size: 19px; }
   .conversation-topline strong { font-size: 13px; }
-  .conversation-topline time, .conversation-reference { font-size: 8.5px; }
+  .conversation-topline time { font-size: 8.5px; }
   .conversation-service, .conversation-last-message { font-size: 11px; }
   .thread-heading { gap: 10px; padding: 12px; }
   .thread-heading h2 { font-size: 16px; }
@@ -575,8 +924,8 @@
 @media (max-width: 360px) {
   .app-top-action { padding-inline: 8px; }
   .app-topbar-inner { gap: 6px; }
-  .shop-chip { padding: 0 11px; font-size: 12px; }
-  .svc-card-body { padding: 12px 12px 2px; }
+  .svc-card-body { padding: 12px 12px 0; }
+  .svc-card-ticket { margin-inline: -12px; padding-inline: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -648,6 +997,7 @@
 .review-stars { margin: 0; padding: 0; border: 0; }
 .review-star-row { display: inline-flex; gap: 4px; margin-top: 6px; }
 .review-star { display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid var(--m-line); border-radius: 8px; background: var(--m-surface); color: var(--m-mist); font-size: 20px; cursor: pointer; transition: color 140ms ease, border-color 140ms ease; }
+.review-star:hover { border-color: var(--m-mist); color: var(--m-ink-soft); }
 .review-star.is-lit { color: var(--m-brand); border-color: var(--m-brand); }
 
 /* Reviews — the customer's words behind a ServMate's rating. */
@@ -690,3 +1040,159 @@
 .pv-portfolio-item { display: grid; gap: 8px; align-content: start; padding: 14px; background: var(--m-surface); border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); }
 .pv-portfolio-title { margin: 0; font-family: var(--display); font-size: 16px; font-weight: 600; color: var(--m-ink); }
 .pv-portfolio-copy { margin: 0; font-size: 12.5px; line-height: 1.6; color: var(--m-ink-soft); }
+
+/* =========================================================================
+   SHORTLIST — saved services compared on a board of equal cards.
+   Each card asks the same six questions in the same order, so four of them side
+   by side read across like a table, and one of them still reads down like a
+   product. The cards keep their own width instead of stretching: `auto-fill`
+   with a fixed maximum column means two saved services look like two services,
+   not two half-screen panels — and on a phone the same board simply becomes one
+   column, with no sideways scrolling to hide the second choice.
+   ========================================================================= */
+
+.shortlist { display: grid; gap: 18px; }
+.shortlist-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; }
+.shortlist-device { padding: 5px 11px; border: 1px solid var(--m-line); border-radius: 999px; color: var(--m-ink-soft); font-family: var(--utility); font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+/* `auto-fit`, not `auto-fill`: the columns that exist are shared by the cards
+   that are there, so two saved services sit as two halves of the board instead
+   of two left-aligned columns with half the frame empty. The 232px floor stops
+   them from being squeezed when there are four, and is what turns the board
+   into one column on a phone without a media query of its own. */
+.shortlist-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(232px, 1fr)); align-items: start; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.shortlist-card { display: grid; gap: 12px; padding: 14px; background: var(--m-surface); border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); box-shadow: var(--m-shadow-sm); }
+/* A constant head height keeps the first fact row at the same height on every
+   card, whether its title took one line or two — the alignment the comparison
+   depends on is a property of the row, not luck about title lengths. */
+.shortlist-card-top { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; align-items: start; gap: 10px; min-height: 58px; }
+.shortlist-art { display: block; overflow: hidden; border-radius: 10px; }
+.shortlist-art .svc-thumb { aspect-ratio: 1 / 1; }
+.shortlist-art .svc-glyph { width: 22px; height: 22px; }
+.shortlist-card-copy { display: grid; gap: 3px; min-width: 0; }
+/* Two lines, like the feed's tickets. A third line would make one card taller
+   than its neighbours, and one grid row taller than the next — which is exactly
+   how the fact rows stop lining up across the comparison. */
+.shortlist-title { display: -webkit-box; overflow: hidden; margin: 0; font-family: var(--display); font-size: 15px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.25; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.shortlist-title a { color: var(--m-ink); text-decoration: none; }
+.shortlist-title a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.shortlist-title a:focus-visible { outline: 2px solid var(--m-brand); outline-offset: 2px; border-radius: 4px; }
+.shortlist-provider { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 0; color: var(--m-ink-soft); font-size: 11.5px; }
+/* The remove control is an icon so the facts below it stay the tallest thing on
+   the card; its accessible name still spells out which service it removes. */
+.shortlist-remove { display: grid; width: 32px; height: 32px; place-items: center; margin: -4px -4px 0 0; border: 1px solid transparent; border-radius: 50%; background: none; color: var(--m-ink-soft); transition: color 140ms ease, background 140ms ease, border-color 140ms ease; }
+.shortlist-remove svg { width: 14px; height: 14px; }
+.shortlist-remove:hover { border-color: var(--m-line); background: var(--m-surface-2); color: var(--m-ink); }
+.shortlist-remove:focus-visible { outline: 2px solid var(--m-brand); outline-offset: 2px; }
+/* One row per question, every row the same height, so the answers line up from
+   card to card exactly as they did in a table. The value is set against the
+   right edge, so a card that is two-up on a wide screen reads as a spec sheet
+   rather than a column of short answers with a wide gap beside it. */
+.shortlist-facts { display: grid; gap: 0; margin: 0; }
+.shortlist-fact { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-height: 34px; padding: 5px 0; border-top: 1px dashed var(--m-line); }
+.shortlist-fact dt { color: var(--m-ink-soft); font-family: var(--utility); font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.shortlist-fact dd { margin: 0; color: var(--m-ink); font-size: 12.5px; text-align: right; }
+.shortlist-card-foot { display: flex; align-items: center; gap: 8px; }
+.shortlist-card-foot .svc-book { flex: 1; }
+.shortlist-profile { color: var(--m-brand-deep); font-size: 11.5px; text-decoration: none; white-space: nowrap; }
+.shortlist-profile:hover { text-decoration: underline; text-underline-offset: 2px; }
+.shortlist-overflow { margin: 0; color: var(--m-ink-soft); font-size: 12px; }
+.shortlist-loading { margin: 0; color: var(--m-ink-soft); font-size: 13px; }
+/* One saved service is a card, not a board: a single column would be a list of
+   one, and the ordinary ticket is the honest rendering of that. */
+.shortlist-single { max-width: 340px; }
+.shortlist-single .svc-thumb { aspect-ratio: 4 / 3; }
+
+
+/* =========================================================================
+   SERVICE PAGE — one listing, read as its own page.
+   The card is the index entry; this is the entry itself: the picture and the
+   one action above the fold, then the listing's own words, the ServMate behind
+   it, what customers said, and the alternatives. Same receipt language as the
+   rest of the shell — paper surfaces, dashed rules, mono labels — so a listing
+   reads as one product rather than a second application.
+   ========================================================================= */
+
+.sd { display: grid; gap: 18px; min-width: 0; }
+
+.sd-hero {
+  display: grid; grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  gap: 26px; padding: 26px;
+  border: 1px solid var(--m-line); border-radius: var(--m-radius-lg);
+  background: var(--m-surface); box-shadow: var(--m-shadow-sm);
+}
+.sd-art { position: relative; display: grid; overflow: hidden; border-radius: var(--m-radius); }
+.sd-art .svc-thumb { height: 100%; aspect-ratio: 4 / 3; }
+.sd-art .svc-glyph { width: 70px; height: 70px; }
+.sd-cat { position: absolute; top: 12px; left: 12px; padding: 5px 10px; border-radius: 999px; background: rgba(255, 254, 252, 0.94); color: var(--m-ink); font-family: var(--utility); font-size: 9px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
+
+.sd-intro { display: grid; align-content: start; gap: 12px; min-width: 0; }
+.sd-title { margin: 0; color: var(--m-ink); font-family: var(--display); font-size: clamp(25px, 3.1vw, 36px); font-weight: 600; letter-spacing: -0.032em; line-height: 1.08; text-wrap: balance; }
+.sd-byline { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 0; color: var(--m-ink-soft); font-size: 13px; }
+.sd-byline a { color: var(--m-brand-deep); font-weight: 600; text-decoration: none; }
+.sd-byline a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.sd-byline-note { padding-left: 8px; border-left: 1px solid var(--m-line); }
+.sd-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; color: var(--m-ink-soft); font-size: 12.5px; }
+.sd-fact { display: inline-flex; align-items: center; gap: 4px; }
+.sd-fact svg { width: 13px; height: 13px; color: var(--m-brand); }
+.sd-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--m-mist); }
+
+/* The buy strip: price and the single action, on the dashed rule the ticket
+   footer uses, so the rate and the request read as one decision. */
+.sd-buy { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin-top: 2px; padding-top: 15px; border-top: 1px dashed var(--m-line); }
+.sd-price { display: flex; align-items: baseline; gap: 6px; margin: 0; }
+.sd-price-label { color: var(--m-ink-soft); font-family: var(--utility); font-size: 9px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
+.sd-price-value { color: var(--m-brand); font-family: var(--display); font-size: 30px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; }
+.sd-price-quote { color: var(--m-ink); font-family: var(--display); font-size: 21px; font-weight: 600; }
+.sd-request { display: inline-flex; min-height: 48px; flex: 1 1 190px; align-items: center; justify-content: center; padding: 0 22px; border: 1px solid var(--m-brand); border-radius: 999px; background: var(--m-brand); color: var(--paper); font-family: inherit; font-size: 14px; font-weight: 700; transition: background 140ms ease, border-color 140ms ease, transform 140ms ease; }
+.app-shell .sd-request { color: var(--paper); }
+.sd-request:hover { background: var(--m-brand-deep); border-color: var(--m-brand-deep); }
+.sd-request:active { transform: scale(0.985); }
+.sd-request:focus-visible { outline: 3px solid var(--m-accent-soft); outline-offset: 2px; }
+.sd-assurance { margin: 0; max-width: 46ch; color: var(--m-ink-soft); font-size: 12px; line-height: 1.55; }
+
+.sd-section { display: grid; gap: 12px; padding: 22px 24px; border: 1px solid var(--m-line); border-radius: var(--m-radius-lg); background: var(--m-surface); }
+.sd-section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px; }
+.sd-section-head h2 { margin: 0; font-family: var(--display); font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+.sd-section-link { color: var(--m-brand-deep); font-size: 12.5px; text-decoration: none; white-space: nowrap; }
+.sd-section-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.sd-copy { max-width: 68ch; margin: 0; color: var(--m-ink); font-size: 14.5px; line-height: 1.7; }
+.sd-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0 26px; margin: 4px 0 0; }
+.sd-details > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px dashed var(--m-line); }
+.sd-details dt { color: var(--m-ink-soft); font-family: var(--utility); font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.sd-details dd { margin: 0; color: var(--m-ink); font-size: 13px; text-align: right; }
+
+.sd-provider { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.sd-provider .pv-avatar { width: 52px; height: 52px; font-size: 22px; }
+.sd-provider-copy { display: grid; flex: 1 1 240px; gap: 3px; min-width: 0; }
+.sd-provider-name { display: flex; align-items: center; gap: 6px; margin: 0; font-family: var(--display); font-size: 17px; font-weight: 600; color: var(--m-ink); }
+.sd-provider-headline { margin: 0; color: var(--m-ink-soft); font-size: 12.5px; line-height: 1.5; }
+.sd-provider-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 2px 0 0; color: var(--m-ink-soft); font-size: 12px; }
+
+/* Reviews are a list inside a section, not a second stack of cards. */
+.sd-section .review-row { padding: 12px 0 0; border: 0; border-top: 1px dashed var(--m-line); border-radius: 0; background: none; }
+.sd-section .review-row:first-child { padding-top: 0; border-top: 0; }
+
+/* The alternatives sit on the page's own paper: the cards inside are already
+   surfaces, and a framed section around them would be a box of boxes. */
+.sd-section-bare { padding: 0; border: 0; background: none; gap: 14px; }
+
+.sd-empty { margin: 0; color: var(--m-ink-soft); font-size: 13px; }
+.sd-empty a { color: var(--m-brand-deep); }
+.sd-empty-panel { padding: 22px; border: 1px dashed var(--m-line); border-radius: var(--m-radius); text-align: center; }
+.sd-empty-panel h3 { margin: 0 0 4px; font-family: var(--display); font-size: 16px; font-weight: 600; }
+.sd-empty-panel p { margin: 0; color: var(--m-ink-soft); font-size: 12.5px; }
+
+@media (max-width: 960px) {
+  .sd-hero { grid-template-columns: minmax(0, 1fr); gap: 18px; padding: 18px; }
+  .sd-art .svc-thumb { aspect-ratio: 16 / 9; }
+  .sd-section { padding: 18px; }
+}
+
+@media (max-width: 620px) {
+  .sd { gap: 14px; }
+  .sd-title { font-size: clamp(23px, 7.4vw, 30px); }
+  .sd-price-value { font-size: 26px; }
+  .sd-request { flex-basis: 100%; }
+  .sd-details { grid-template-columns: minmax(0, 1fr); }
+  .shortlist-fact { gap: 8px; }
+}

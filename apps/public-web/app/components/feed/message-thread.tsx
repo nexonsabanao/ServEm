@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronRightIcon } from '@/app/components/icons';
@@ -20,6 +20,15 @@ export function MessageThread({ conversation }: { conversation: Conversation }) 
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
+
+  /*
+   * A live refresh re-renders this page from the server; the local list has to
+   * follow it, or the person would keep looking at the conversation as it was
+   * when they first opened it.
+   */
+  useEffect(() => {
+    setMessages(conversation.messages);
+  }, [conversation.messages]);
 
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

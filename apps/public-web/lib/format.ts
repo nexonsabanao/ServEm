@@ -3,6 +3,17 @@
  * figures are rendered on the server, where the time zone is known and stable.
  */
 
+/**
+ * What a quote-only listing's rate says, in one place.
+ *
+ * A ServMate may publish a listing with no fixed price (`pricingModel: 'quote'`).
+ * The hero, the fact list, the card's footer and the receipt all print this
+ * sentence, and they used to print two different versions of it on one screen.
+ * The number formatter and both price renderers read it from here, so there is
+ * one owner for the words and only the typography differs per surface.
+ */
+export const QUOTE_PHRASE = 'Ask for a quote';
+
 /** `180000` centavos → `₱1,800`. */
 export function formatPhp(centavos: number): string {
   const pesos = Math.floor(centavos / 100);
@@ -11,21 +22,22 @@ export function formatPhp(centavos: number): string {
   return `₱${groupedPesos}${remainder === 0 ? '' : `.${remainder.toString().padStart(2, '0')}`}`;
 }
 
-/** The rate line used on cards, dockets and receipts. */
+/** The rate line used on dockets and receipts. */
 export function formatRate(startingPriceCentavos?: number): string {
-  if (startingPriceCentavos === undefined) return 'Ask for a quote';
+  if (startingPriceCentavos === undefined) return QUOTE_PHRASE;
   return `From ${formatPhp(startingPriceCentavos)}`;
 }
 
 /**
  * A listing's starting amount, or the honest answer for a quote-only listing.
  *
- * A ServMate may publish a listing with no fixed price (`pricingModel: 'quote'`),
- * so every surface that shows a price goes through here rather than printing
- * `₱NaN` or implying a number that was never set.
+ * Every surface that prints a price by itself goes through here rather than
+ * printing `₱NaN` or implying a number that was never set. A surface that also
+ * styles the words (the hero, the card footer) reads `QUOTE_PHRASE` directly and
+ * keeps its own markup.
  */
 export function formatFromPrice(startingPriceCentavos?: number): string {
-  return startingPriceCentavos === undefined ? 'Ask for a quote' : formatPhp(startingPriceCentavos);
+  return startingPriceCentavos === undefined ? QUOTE_PHRASE : formatPhp(startingPriceCentavos);
 }
 
 /** `5` → `~5 min`, `90` → `~1.5 hr`. Used wherever a reply time is shown. */

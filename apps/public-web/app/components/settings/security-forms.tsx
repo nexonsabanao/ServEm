@@ -21,8 +21,7 @@ export function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
   if (!hasPassword) {
     return (
       <p className="set-gated">
-        This account signs in with Google or Apple, so it has no ServEm password to change.
-        Setting one would need an account-linking flow, which is not built yet.
+        Google or Apple sign-in — no ServEm password to change, and linking is not built.
       </p>
     );
   }

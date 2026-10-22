@@ -214,8 +214,6 @@ export type ServmatePreviewState = {
   profiles: Record<string, ServmateProfileDraft>;
 };
 
-export const SERVEMATE_PREVIEW_KEY = 'servem:servmate-preview';
-
 export function emptyPreviewState(): ServmatePreviewState {
   return { decisions: {}, accepting: true, profiles: {} };
 }

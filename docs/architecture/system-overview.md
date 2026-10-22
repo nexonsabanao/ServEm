@@ -64,6 +64,38 @@ projections exist above it.
 authorized against the asset's owning entity, a type allowlist, and a byte-length check so a
 declared `image/png` cannot smuggle something else.
 
+### Storefront read model
+
+The marketplace screens are one pipeline with one direction: rows are read once, turned into
+cards once, and rendered by components that make no decisions of their own.
+
+```
+store rows ──▶ lib/servmate-profile   ProviderView / ListingView / ServiceDetail (server reads)
+                    │
+                    ▼
+              lib/feed-data          FeedService / Provider cards (pure projections)
+                    │
+        ┌───────────┼─────────────┐
+        ▼           ▼             ▼
+  lib/related   lib/search    components (app/components/feed/**)
+  (selection)   (matching)    render cards, own no ranking or formatting policy
+```
+
+- `lib/servmate-profile.ts` owns the reads. It decides what a page may see; it does not decide
+  what to recommend or how a price reads.
+- `lib/feed-data.ts` owns the card projection: tone, glyph, rating and reply time are derived from
+  the stored view, never stored twice.
+- `lib/related.ts` owns which other listings a service page offers — closest category/area first,
+  then the rest of the catalogue, one card per ServMate and one per folded title. Pure, so it is
+  tested without a datastore (`test/related.test.ts`).
+- `lib/search.ts` owns matching over the same cards, so a search result and a feed card describe
+  the same listing.
+- `lib/format.ts` owns display strings, including the quote-only sentence. A surface styles those
+  words; it does not restate them.
+- Device-local state has one owner too: `lib/device-store.ts` is the only module that knows the
+  storage keys, and `useSavedServices` is the only reader/writer of the saved list, so the feed,
+  search, the shortlist board and the recommendations cannot disagree about a bookmark.
+
 ## Why this shape
 
 - **The leak we are actually designing against is a projection leak.** A field that exists on a

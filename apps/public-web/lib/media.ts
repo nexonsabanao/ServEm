@@ -490,6 +490,18 @@ export async function storeProfileAsset(
 }
 
 /** Erases an asset's bytes and marks its record deleted. */
+/**
+ * Removes the bytes for a row that is already gone.
+ *
+ * Account deletion removes the media rows inside its own transaction (so a
+ * half-deleted account can never be persisted) and hands the storage keys here
+ * afterwards. Failure is the caller's to ignore: an orphaned file is invisible
+ * without its row, while a visible row with no file is a broken page.
+ */
+export async function discardStoredBytes(storageKey: string): Promise<void> {
+  await discardBytes(storageKey);
+}
+
 export async function discardAsset(assetId: string): Promise<void> {
   const storageKey = await transact((database) => {
     const asset = database.mediaAssets.find((row) => row.id === assetId);

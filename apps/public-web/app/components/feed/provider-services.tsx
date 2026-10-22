@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LocationIcon } from '@/app/components/icons';
@@ -28,7 +29,9 @@ export function ProviderServiceList({ services }: { services: FeedService[] }) {
               <ServiceGlyph kind={service.glyph} />
             </span>
             <div className="pv-svc-copy">
-              <h3 className="pv-svc-title">{service.title}</h3>
+              <h3 className="pv-svc-title">
+                <Link href={`/services/${service.id}`}>{service.title}</Link>
+              </h3>
               <p className="pv-svc-meta">
                 {service.category}
                 <span className="pv-dot" aria-hidden="true">·</span>

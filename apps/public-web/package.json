@@ -11,6 +11,7 @@
     "build": "next build",
     "start": "next start",
     "test": "node --import ./test/register.mjs --test test/*.test.ts",
+    "test:purge": "node test/purge-scheduler-live.mjs",
     "test:e2e": "node test/e2e-live.mjs"
   },
   "dependencies": {

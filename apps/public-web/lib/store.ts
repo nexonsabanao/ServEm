@@ -54,7 +54,31 @@ export type UserRecord = {
   isServMate?: boolean;
   /** Local-development demo account. Never true for a real registration. */
   isDemo?: boolean;
+  /**
+   * When the owner deleted the account. Deletion is soft first: the personal
+   * fields are erased immediately and this tombstone keeps the row that the
+   * other party's terminal bookings point at, until `purgeAfter` passes.
+   */
+  deletedAt?: string;
+  /** When the tombstone and everything still tied to it may be erased. */
+  purgeAfter?: string;
   createdAt: string;
+};
+
+/**
+ * One account deletion, kept as the operator-facing record of when it happened
+ * and what outlived it.
+ *
+ * `retainedBookingIds` is the whole point of the row: it names the terminal
+ * bookings that were kept because the counterparty's history (and a possible
+ * later dispute) depends on them. Nothing here is personal data.
+ */
+export type AccountDeletionRecord = {
+  id: string;
+  userId: string;
+  requestedAt: string;
+  purgeAfter: string;
+  retainedBookingIds: string[];
 };
 
 /** Short-lived state carried between an OAuth redirect and its callback. */
@@ -501,6 +525,7 @@ export type Database = {
   userReports: UserReportRecord[];
   /** Every operator action taken on a report or a dispute, in order. */
   moderationActions: ModerationActionRecord[];
+  accountDeletions: AccountDeletionRecord[];
   pendingAuth: PendingAuthRecord[];
   passwordResets: PasswordResetRecord[];
 };
@@ -552,6 +577,7 @@ export function emptyDatabase(): Database {
     userBlocks: [],
     userReports: [],
     moderationActions: [],
+    accountDeletions: [],
     pendingAuth: [],
     passwordResets: [],
   };
@@ -609,6 +635,7 @@ async function readDatabase(): Promise<Database> {
       userBlocks: rows<UserBlockRecord>(parsed.userBlocks),
       userReports: rows<UserReportRecord>(parsed.userReports),
       moderationActions: rows<ModerationActionRecord>(parsed.moderationActions),
+      accountDeletions: rows<AccountDeletionRecord>(parsed.accountDeletions),
       pendingAuth: rows<PendingAuthRecord>(parsed.pendingAuth),
       passwordResets: rows<PasswordResetRecord>(parsed.passwordResets),
     };

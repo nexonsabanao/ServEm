@@ -109,7 +109,7 @@ export function ProfileEditor({
             }}
           />
           <span className="prof-note" id="prof-name-note">
-            This is the name a ServMate sees on your requests and in messages.
+            Shown to ServMates on your requests and in messages.
           </span>
         </div>
 
@@ -128,7 +128,7 @@ export function ProfileEditor({
             ))}
           </select>
           <span className="prof-note">
-            ServMates use this to check a job is within reach. Your street address is never shared.
+            Used to check a job is within reach — your street address is never shared.
           </span>
         </div>
 
@@ -166,7 +166,7 @@ export function ProfileEditor({
             ))}
           </div>
           <span className="prof-note">
-            A colour rather than a photo — ServEm does not store profile pictures yet.
+            A colour rather than a photo — no profile pictures are stored yet.
           </span>
         </fieldset>
       </div>

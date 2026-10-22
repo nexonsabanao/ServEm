@@ -7,6 +7,7 @@ import {
   type Provider,
 } from './feed-data';
 import { isServiceArea, toneForCategory, type Gradient } from './presentation';
+import { relatedTo } from './related';
 import { reviewSummariesByProfile, type ReviewSummary } from './reviews';
 import {
   query,
@@ -424,10 +425,44 @@ export async function listFeedServices(): Promise<FeedService[]> {
   return query((database) => feedServices(database));
 }
 
-/** The card-facing provider record for one ServMate. */
-export async function getProviderCard(servmateProfileId: string): Promise<Provider | null> {
-  const view = await getProviderView(servmateProfileId);
-  return view ? providerFrom(view) : null;
+/**
+ * One listing, with everything its own page needs around it.
+ *
+ * The card shape is deliberately thinner than this: a card carries the six
+ * facts a person scans in a grid, and the description — the part that actually
+ * sells the work — is only read once someone has opened the listing. So the
+ * detail read returns the description beside the card, the ServMate whose
+ * profile the page links to, and the alternatives the page offers underneath.
+ *
+ * The alternatives are chosen by `./related`, which owns that policy on its
+ * own: this module reads the catalogue, that one decides which of it is worth
+ * recommending.
+ */
+export type ServiceDetail = {
+  service: FeedService;
+  /** The listing's own words about the work, as published. */
+  description: string;
+  provider: ProviderView;
+  related: FeedService[];
+};
+
+export function serviceDetail(database: Database, listingId: string): ServiceDetail | null {
+  const listing = database.serviceListings.find(
+    (row) => row.id === listingId && row.publicationStatus === 'published',
+  );
+  if (!listing) return null;
+
+  const provider = providerView(database, listing.servmateProfileId);
+  if (!provider) return null;
+
+  const service = feedServiceFrom(toListingView(listing), providerFrom(provider));
+  const related = relatedTo(feedServices(database), service);
+
+  return { service, description: listing.description, provider, related };
+}
+
+export async function getServiceDetail(listingId: string): Promise<ServiceDetail | null> {
+  return query((database) => serviceDetail(database, listingId));
 }
 
 /** Every active ServMate as a card-facing record, by name. */

@@ -47,8 +47,7 @@ export function BlockedAccounts({
   if (blocked.length === 0) {
     return (
       <p className="set-row-note">
-        You have not blocked anyone. Blocking someone from a profile or a job hides their work from
-        you and yours from them, without telling either of you.
+        Nobody blocked. A block hides your work from each other without telling either of you.
       </p>
     );
   }
@@ -76,8 +75,7 @@ export function BlockedAccounts({
         </p>
       )}
       <p className="job-media-hint">
-        Unblocking lets both of you appear in each other&apos;s matching again. Reports are separate
-        and are not affected.
+        Unblocking returns both of you to each other&apos;s matching; reports are separate.
       </p>
     </>
   );

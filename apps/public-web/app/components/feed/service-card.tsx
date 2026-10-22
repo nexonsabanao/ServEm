@@ -1,9 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { BookmarkIcon, LocationIcon, StarIcon } from '@/app/components/icons';
+import {
+  BookmarkIcon,
+  ChevronRightIcon,
+  LocationIcon,
+  StarIcon,
+  VerifiedIcon,
+} from '@/app/components/icons';
 import { gradientStyle, type FeedService } from '@/lib/feed-data';
-import { formatFromPrice, formatReplies } from '@/lib/format';
+import { QUOTE_PHRASE, formatFromPrice } from '@/lib/format';
 
 /** The glyph drawn on a service thumbnail so it is not a bare gradient. */
 export function ServiceGlyph({ kind }: { kind: FeedService['glyph'] }) {
@@ -70,13 +76,39 @@ export function StarRating({ rating, count }: { rating: number; count?: number }
 }
 
 /**
- * A bookable service as a work-order ticket: who is offering it, where, how
- * fast they reply, and what it starts at. The dotted ledger and the perforated
- * foot carry the same receipt language as the account docket, so the unit of
- * the marketplace reads as a job rather than a product.
+ * The verified mark, in one place.
  *
- * Only facts the preview data actually holds are shown — no struck-through
- * prices, discount bursts or sales counters, which would be invented urgency.
+ * A ServMate's verification appears on a Home card, a search row and a
+ * shortlist column; all three draw this same 14px badge with the same
+ * accessible name. Two surfaces used to put the word "Verified" inside this
+ * class after the card had turned it into an icon slot, which spilled out of
+ * the badge — so the mark is defined once here instead of once per screen.
+ */
+export function VerifiedMark() {
+  return (
+    <span className="svc-verified" title="Verified ServMate">
+      <VerifiedIcon />
+      <span className="visually-hidden">Verified ServMate</span>
+    </span>
+  );
+}
+
+/**
+ * A bookable service as a printed ticket: a short colour band, the service's
+ * name, one line of facts, and a perforated footer carrying the only two things
+ * a person needs to act — what it costs, and the request.
+ *
+ * The ticket opens the service's own page: the name and the picture are links,
+ * which is where a customer reads the full listing before deciding. They are two
+ * links to one destination because the picture is the larger target on a phone;
+ * the picture's link is hidden from assistive technology and the tab order so the
+ * title stays the single accessible way in. The save button rides above the
+ * picture rather than inside the link, because a button inside an anchor is not
+ * something a browser can honour.
+ *
+ * The reply speed that used to sit on the card is gone. It still decides the
+ * "Fastest reply" sort, but as a third fact beside the rating and the area it
+ * was noise on every card; the ServMate's page is where the detail belongs.
  */
 export function ServiceCard({
   service,
@@ -90,55 +122,20 @@ export function ServiceCard({
   onToggleSave: (id: string) => void;
 }) {
   const provider = service.provider;
-  const replies = provider.responseMins > 0 ? formatReplies(provider.responseMins) : null;
+  const quoteOnly = service.startingPriceCentavos === undefined;
 
   return (
     <article className="svc-card">
       <div className="svc-card-media">
-        <ServiceThumb service={service} />
+        <Link
+          className="svc-card-art"
+          href={`/services/${service.id}`}
+          tabIndex={-1}
+          aria-hidden="true"
+        >
+          <ServiceThumb service={service} />
+        </Link>
         <span className="svc-card-cat">{service.category}</span>
-      </div>
-
-      <div className="svc-card-body">
-        <h3 className="svc-card-title">{service.title}</h3>
-
-        {provider && (
-          <p className="svc-card-provider">
-            <Link className="svc-card-name" href={`/providers/${provider.id}`}>
-              {provider.name}
-            </Link>
-            {provider.verified && <span className="svc-verified">Verified</span>}
-          </p>
-        )}
-
-        <dl className="svc-ledger">
-          <div>
-            <dt>Area</dt>
-            <span className="svc-leader" />
-            <dd><LocationIcon /> {service.area}</dd>
-          </div>
-          <div>
-            <dt>Rating</dt>
-            <span className="svc-leader" />
-            <dd><StarIcon /> {service.rating.toFixed(1)}</dd>
-          </div>
-          <div>
-            <dt>Replies</dt>
-            <span className="svc-leader" />
-            <dd>{replies ?? '—'}</dd>
-          </div>
-          <div className="svc-ledger-from">
-            <dt>From</dt>
-            <span className="svc-leader" />
-            <dd className="svc-price">{formatFromPrice(service.startingPriceCentavos)}</dd>
-          </div>
-        </dl>
-      </div>
-
-      <div className="svc-card-foot">
-        <button type="button" className="svc-book" onClick={() => onBook(service)}>
-          Request
-        </button>
         <button
           type="button"
           className="svc-save"
@@ -149,7 +146,46 @@ export function ServiceCard({
           <BookmarkIcon filled={saved} />
         </button>
       </div>
+
+      <div className="svc-card-body">
+        <h3 className="svc-card-title">
+          <Link href={`/services/${service.id}`}>{service.title}</Link>
+        </h3>
+
+        {provider && (
+          <p className="svc-card-provider">
+            <Link className="svc-card-name" href={`/providers/${provider.id}`}>
+              {provider.name}
+            </Link>
+            {provider.verified && <VerifiedMark />}
+          </p>
+        )}
+
+        <p className="svc-card-meta">
+          <StarRating rating={service.rating} />
+          <span className="svc-meta-sep" aria-hidden="true" />
+          <span className="svc-card-area">
+            <LocationIcon />
+            {service.area}
+          </span>
+        </p>
+
+        <div className="svc-card-ticket">
+          {quoteOnly ? (
+            <p className="svc-price is-quote">{QUOTE_PHRASE}</p>
+          ) : (
+            <p className="svc-price-row">
+              <span className="svc-price-from">From</span>
+              <span className="svc-price">{formatFromPrice(service.startingPriceCentavos)}</span>
+            </p>
+          )}
+
+          <button type="button" className="svc-book" onClick={() => onBook(service)}>
+            Request
+            <span className="svc-book-arrow" aria-hidden="true"><ChevronRightIcon /></span>
+          </button>
+        </div>
+      </div>
     </article>
   );
 }
-

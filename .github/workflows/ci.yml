@@ -1,0 +1,59 @@
+name: CI
+
+# The suite only protects the repository if it runs on every change: typecheck,
+# unit tests, a production build, then the live end-to-end script against a real
+# server with real cookies. This workflow runs the commands `docs/testing` names,
+# in that order, so a failure is attributable to the step that printed it.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck, test, build, e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/public-web
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # No lockfile is committed yet, so this cannot be `npm ci`. Committing one
+      # is the next supply-chain step; until then the install is reproducible to
+      # the ranges in package.json and nothing stricter.
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+      # The moderation console's privileged path is only exercised when the
+      # server and the script share a token. A throwaway one per run keeps that
+      # half of the suite live without storing a secret.
+      - name: Generate a disposable moderation token
+        run: echo "SERVEM_MODERATION_TOKEN=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+
+      - name: End-to-end
+        run: npm run test:e2e

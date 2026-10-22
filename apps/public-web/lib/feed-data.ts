@@ -100,20 +100,3 @@ export function feedServiceFrom(view: ListingView, provider: Provider): FeedServ
   };
 }
 
-/** Every provider as a card, with each one's published listings attached. */
-export type ProviderWithListings = { provider: Provider; listings: FeedService[] };
-
-export function providerCards(views: ProviderView[]): ProviderWithListings[] {
-  return views.map((view) => {
-    const provider = providerFrom(view);
-    return { provider, listings: view.listings.map((listing) => feedServiceFrom(listing, provider)) };
-  });
-}
-
-/** The cheapest published price across a provider's listings, if any. */
-export function fromCentavos(listings: FeedService[]): number | undefined {
-  const prices = listings
-    .map((listing) => listing.startingPriceCentavos)
-    .filter((price): price is number => price !== undefined);
-  return prices.length === 0 ? undefined : Math.min(...prices);
-}

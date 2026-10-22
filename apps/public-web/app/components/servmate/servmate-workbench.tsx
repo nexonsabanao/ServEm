@@ -4,12 +4,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ChatIcon, LocationIcon, StarIcon, VerifiedIcon } from '@/app/components/icons';
+import { readPreviewState, writePreviewState } from '@/lib/device-store';
 import {
   COVERAGE_CHOICES,
   emptyDraft,
   emptyPreviewState,
-  parsePreviewState,
-  SERVEMATE_PREVIEW_KEY,
   type ServmateDecision,
   type ServmatePreviewState,
   type ServmateProfileDraft,
@@ -42,23 +41,14 @@ export function ServmateWorkbench({ data }: { data: WorkbenchData }) {
   const provider = data.provider;
 
   useEffect(() => {
-    try {
-      const stored: unknown = JSON.parse(window.localStorage.getItem(SERVEMATE_PREVIEW_KEY) ?? 'null');
-      setState(parsePreviewState(stored));
-    } catch {
-      // Decisions stay in memory for this session when storage is unavailable.
-    } finally {
-      setReady(true);
-    }
+    // Decisions stay in memory for this session when storage is unavailable.
+    setState(readPreviewState());
+    setReady(true);
   }, []);
 
   useEffect(() => {
     if (!ready) return;
-    try {
-      window.localStorage.setItem(SERVEMATE_PREVIEW_KEY, JSON.stringify(state));
-    } catch {
-      // The in-memory decisions still work when storage is unavailable.
-    }
+    writePreviewState(state);
   }, [state, ready]);
 
   const openRequests = data.requests.filter((request) => request.status === 'requested');
