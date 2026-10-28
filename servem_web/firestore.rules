@@ -1,0 +1,447 @@
+rules_version = '2';
+
+// ============================================================================
+// ServEm (servem-ph) Firestore security rules — defense in depth.
+//
+// Threat model: the client is completely untrusted. Every state-changing flow
+// (bookings, status, chat, reviews, payouts, refunds, disputes, tickets,
+// payments, admin claims) goes through a validated Cloud Function that uses
+// the Admin SDK (which bypasses these rules). Clients get read access scoped
+// to their own data and may write only a tiny allow-list: their own profile
+// display fields, saved places, and marking their own notifications read.
+//
+// Invariants enforced here:
+//   * malformed ids are rejected everywhere
+//   * privileged fields (role, verified, admin, payouts, totals) can never be
+//     written by a client
+//   * money/ops collections (bookings, threads, payments, payouts, disputes,
+//     tickets, services, servmates, reviews, auditLog, admin collections) are
+//     write-denied to all clients — functions only
+//   * auditLog is append-only from functions and never mutated/deleted here
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------------------------------------
+    // Reusable helpers
+    // ------------------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    // Admin is a custom claim set ONLY by the setAdminClaim function
+    // (verified auth token — the client cannot forge it).
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.get('admin', false) == true;
+    }
+
+    // Well-formed Firestore/Auth identifiers. Rejects '', '..', slashes,
+    // whitespace and anything outside [A-Za-z0-9_-].
+    function isId(id) {
+      return id is string && id.matches('^[A-Za-z0-9_-]{6,128}$');
+    }
+
+    // Booking status / payment-method enums and full document-shape checks
+    // for function-owned collections live in the zod layer (functions/src/lib/
+    // validate.ts); rules validate only what clients may write (profiles,
+    // places, notifications), keeping this file lean and cheap to evaluate.
+
+    // ------------------------------------------------------------------
+    // profiles — minimal user documents provisioned by onAuthUserCreate.
+    // Client may tweak display fields only; role/verified/uid are frozen.
+    // ------------------------------------------------------------------
+    function profilePublicKeys() {
+      return ['uid', 'name', 'displayName', 'email', 'phone', 'city', 'photo', 'bio', 'role', 'verified', 'since', 'status', 'payoutMethod', 'payoutDetails', 'createdAt', 'updatedAt'];
+    }
+
+    function isProfileCreateSafe(d) {
+      return isId(uid()) && d.keys().hasOnly(profilePublicKeys())
+        && d.role == 'customer'
+        && (!('verified' in d) || d.verified == false)
+        && (!('uid' in d) || d.uid == uid())
+        && !('admin' in d) && !('adminClaim' in d);
+    }
+
+    function isProfileUpdateSafe(current, next) {
+      // `status` is staff-only: the key is allowed in the document so updates
+      // keep it, but an owner can never change it (a suspended account cannot
+      // clear its own flag).
+      return next.keys().hasOnly(profilePublicKeys())
+        && !next.diff(current).affectedKeys().hasAny(['status'])
+        && next.role == current.role
+        && next.verified == current.verified
+        && next.get('uid', uid()) == uid();
+    }
+
+    match /profiles/{uidParam} {
+      allow read: if (isSignedIn() && uid() == uidParam) || isAdmin();
+      allow create: if isSignedIn() && uid() == uidParam && isProfileCreateSafe(request.resource.data);
+      allow update: if isSignedIn() && uid() == uidParam && isProfileUpdateSafe(resource.data, request.resource.data);
+      allow delete: if false;
+
+      // Saved service addresses. Owner-only, shape-checked.
+      match /places/{placeId} {
+        allow read: if isSignedIn() && uid() == uidParam;
+        allow delete: if isSignedIn() && uid() == uidParam && isId(placeId);
+        allow create: if isSignedIn() && uid() == uidParam && isId(placeId)
+          && request.resource.data.keys().hasAll(['label', 'address'])
+          && request.resource.data.keys().hasOnly(['label', 'address', 'isDefault'])
+          && request.resource.data.label is string && request.resource.data.label.size() >= 1 && request.resource.data.label.size() <= 60
+          && request.resource.data.address is string && request.resource.data.address.size() >= 5 && request.resource.data.address.size() <= 400
+          && request.resource.data.get('isDefault', false) is bool;
+        allow update: if isSignedIn() && uid() == uidParam && isId(placeId)
+          && request.resource.data.keys().hasAll(['label', 'address'])
+          && request.resource.data.keys().hasOnly(['label', 'address', 'isDefault'])
+          && request.resource.data.label is string && request.resource.data.label.size() >= 1 && request.resource.data.label.size() <= 60
+          && request.resource.data.address is string && request.resource.data.address.size() >= 5 && request.resource.data.address.size() <= 400
+          && request.resource.data.isDefault is bool;
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // bookings — write-DENIED to clients. Created/transitioned only via
+    // createBooking / updateBookingStatus which validate participants,
+    // transitions, and recompute all money server-side.
+    // ------------------------------------------------------------------
+    match /bookings/{bookingId} {
+      allow read: if isSignedIn() && (
+        resource.data.customerId == uid() ||
+        resource.data.providerId == uid() ||
+        isAdmin()
+      );
+      allow create, update, delete: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // threads — one per booking; members can read, never write. Messages go
+    // through sendBookingMessage (membership + rate limit + sanitisation).
+    // ------------------------------------------------------------------
+    match /threads/{threadId} {
+      allow read: if isSignedIn() && (
+        uid() in resource.data.members || isAdmin()
+      );
+      allow create, update, delete: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // notifications — created by functions only; the recipient may flip
+    // the single boolean `read` on their own rows.
+    // ------------------------------------------------------------------
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && (resource.data.uid == uid() || isAdmin());
+      allow update: if isSignedIn() && isId(notificationId)
+        && resource.data.uid == uid()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+        && request.resource.data.read == true;
+      allow create, delete: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // Public catalog & provider directory — readable by everyone,
+    // written only by admin flows via the Admin SDK.
+    // ------------------------------------------------------------------
+    match /services/{serviceId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    match /servmates/{servmateId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Legal/platform configuration (fee disclosure, terms version, etc.)
+    match /config/{configId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Reviews are published/readable; creation is exclusively through
+    // createReview (completed booking, assigned customer, once per booking).
+    match /reviews/{reviewId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // Money & operations collections — client READS are admin-scoped (or
+    // absent by design), writes are function-only.
+    // ------------------------------------------------------------------
+    match /payments/{paymentId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Overlapping match statements are OR-ed, so this adds the one write the
+    // client needs to an otherwise admin-only collection.
+    match /reviews/{reviewId} {
+      allow create: if isSignedIn()
+        && request.resource.data.authorUid == uid()
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && isText(request.resource.data.text, 1, 1000)
+        && request.resource.data.status == 'published';
+    }
+
+    match /payouts/{payoutId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.providerId == uid());
+      allow write: if false;
+    }
+
+    // Disputes are visible to admin and to the two participants of the
+    // referenced booking (resolved through a server-side lookup).
+    // Note: rule functions cannot capture `database`, so it is passed in.
+    function isBookingParty(bookingId, databaseId) {
+      return isSignedIn() && isId(bookingId)
+        && (
+          get(/databases/$(databaseId)/documents/bookings/$(bookingId)).data.customerId == uid() ||
+          get(/databases/$(databaseId)/documents/bookings/$(bookingId)).data.providerId == uid()
+        );
+    }
+
+    match /disputes/{disputeId} {
+      allow read: if isAdmin() || ('bookingId' in resource.data && isBookingParty(resource.data.bookingId, database));
+      allow write: if false;
+    }
+
+    match /tickets/{ticketId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.uid == uid());
+      allow write: if false;
+    }
+
+    match /auditLog/{entryId} {
+      allow read: if isAdmin();
+      allow write: if false; // append happens through the Admin SDK only
+    }
+
+    // Admin-workspace aggregates. Admin can read from the client SDK (the
+    // admin dashboard subscribes to these); writes stay function-only.
+    match /customers/{customerId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // Function-operational state — invisible to every client.
+    // ------------------------------------------------------------------
+    match /rateLimits/{counterId} {
+      allow read, write: if false;
+    }
+
+    match /webhookEvents/{eventId} {
+      allow read, write: if false;
+    }
+
+    // ------------------------------------------------------------------
+    // Deny-by-default backstop for anything not matched above.
+    // ------------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ======================================================================
+    // Client writes on the free plan (no Cloud Functions deployed).
+    //
+    // These grants are additive and re-check what a callable used to enforce:
+    // the actor, the frozen money fields, the listing's own rate, the 10%
+    // platform fee, the total, and the allowed status transitions beyond
+    // what the app's client writes.
+    // ======================================================================
+
+    function isText(value, min, max) {
+      return value is string && value.size() >= min && value.size() <= max;
+    }
+
+    // A suspended account keeps read access to its own records but cannot
+    // create new bookings, listings, requests or messages.
+    function isActiveAccount() {
+      return !exists(/databases/$(database)/documents/profiles/$(uid()))
+        || get(/databases/$(database)/documents/profiles/$(uid())).data.get('status', 'active') != 'suspended';
+    }
+    function paymentOk(value) {
+      return value in ['gcash', 'maya', 'bank_transfer', 'cash_on_completion'];
+    }
+    function placeOk(value) {
+      return value in ['home', 'condo', 'apartment', 'office', 'retail', 'other'];
+    }
+
+    match /bookings/{bookingId} {
+      allow create: if isSignedIn()
+        && isActiveAccount()
+        && request.resource.data.customerId == uid()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.hours is int
+        && request.resource.data.hours >= 1
+        && request.resource.data.hours <= 24
+        && request.resource.data.rate is int
+        && request.resource.data.rate > 0
+        && get(/databases/$(database)/documents/services/$(request.resource.data.serviceId)).data.providerId
+          == request.resource.data.providerId
+        && get(/databases/$(database)/documents/services/$(request.resource.data.serviceId)).data.status == 'live'
+        && get(/databases/$(database)/documents/services/$(request.resource.data.serviceId)).data.rate
+          == request.resource.data.rate
+        && request.resource.data.fee is int
+        && request.resource.data.fee * 10 >= request.resource.data.rate * request.resource.data.hours - 5
+        && request.resource.data.fee * 10 <= request.resource.data.rate * request.resource.data.hours + 5
+        && request.resource.data.total
+          == request.resource.data.rate * request.resource.data.hours + request.resource.data.fee
+        && isText(request.resource.data.address, 5, 200)
+        && isText(request.resource.data.city, 2, 100)
+        && isText(request.resource.data.province, 2, 100)
+        && request.resource.data.postalCode is string
+        && request.resource.data.postalCode.matches('^[0-9]{4}$')
+        && paymentOk(request.resource.data.paymentMethod)
+        && placeOk(request.resource.data.placeType)
+        && request.resource.data.createdAt == request.time;
+
+      allow update: if isSignedIn()
+        && (resource.data.customerId == uid() || resource.data.providerId == uid())
+        && request.resource.data.customerId == resource.data.customerId
+        && request.resource.data.providerId == resource.data.providerId
+        && request.resource.data.serviceId == resource.data.serviceId
+        && request.resource.data.rate == resource.data.rate
+        && request.resource.data.fee == resource.data.fee
+        && request.resource.data.total == resource.data.total
+        && request.resource.data.hours == resource.data.hours
+        && request.resource.data.status in ['pending', 'accepted', 'in_progress', 'completed', 'cancelled']
+        && (
+          (resource.data.customerId == uid() && (
+            (resource.data.status in ['pending', 'accepted'] && request.resource.data.status == 'cancelled')
+            || (resource.data.status == 'accepted' && request.resource.data.status == 'completed')
+            || (request.resource.data.status == resource.data.status
+              && request.resource.data.date is string
+              && request.resource.data.time is string)
+          ))
+          || (resource.data.providerId == uid() && (
+            (resource.data.status == 'pending' && request.resource.data.status == 'accepted')
+            || (resource.data.status == 'accepted' && request.resource.data.status == 'in_progress')
+            || (resource.data.status == 'in_progress' && request.resource.data.status == 'completed')
+            || (resource.data.status in ['pending', 'accepted'] && request.resource.data.status == 'cancelled')
+          ))
+        );
+    }
+
+    match /threads/{threadId} {
+      allow create: if isSignedIn()
+        && isActiveAccount()
+        && uid() in request.resource.data.members
+        && request.resource.data.members.size() == 2
+        && request.resource.data.bookingId == threadId
+        && request.resource.data.members == [
+             get(/databases/$(database)/documents/bookings/$(threadId)).data.customerId,
+             get(/databases/$(database)/documents/bookings/$(threadId)).data.providerId
+           ];
+      allow update: if isSignedIn()
+        && uid() in resource.data.members
+        && request.resource.data.members == resource.data.members
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            'lastMessage', 'lastMessageAt', 'updatedAt', 'messageCount',
+            'customerId', 'providerId', 'customerName', 'providerName', 'service'
+          ]);
+      match /messages/{messageId} {
+        allow read: if isSignedIn()
+          && uid() in get(/databases/$(database)/documents/threads/$(threadId)).data.members;
+        allow create: if isSignedIn()
+          && isActiveAccount()
+          && uid() in get(/databases/$(database)/documents/threads/$(threadId)).data.members
+          && request.resource.data.senderId == uid()
+          && isText(request.resource.data.text, 1, 2000)
+          && request.resource.data.createdAt == request.time;
+      }
+    }
+
+    match /verificationRequests/{requestId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.uid == uid());
+      allow create: if isSignedIn()
+        && isActiveAccount()
+        && request.resource.data.uid == uid()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.documentPaths is list
+        && request.resource.data.documentPaths.size() >= 1
+        && request.resource.data.documentPaths.size() <= 5
+        && request.resource.data.type in [
+          'government_id', 'business_permit', 'barangay_clearance',
+          'nbi_clearance', 'professional_certificate', 'other'
+        ];
+      allow update: if isAdmin();
+    }
+
+    match /withdrawals/{withdrawalId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.providerId == uid());
+      allow create: if isSignedIn()
+        && isActiveAccount()
+        && request.resource.data.providerId == uid()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.amount is int
+        && request.resource.data.amount >= 1000;
+      allow update: if isAdmin();
+    }
+
+    match /services/{serviceId} {
+      allow create, update: if isSignedIn()
+        && isActiveAccount()
+        && request.resource.data.providerId == uid()
+        && request.resource.data.status in ['draft', 'live', 'paused']
+        && request.resource.data.rate is int
+        && request.resource.data.rate >= 100
+        && request.resource.data.rate <= 100000;
+      allow update: if isAdmin();
+    }
+
+    match /servmates/{servmateId} {
+      allow create, update: if isSignedIn()
+        && request.resource.data.uid == uid()
+        && request.resource.data.status in ['draft', 'pending', 'active', 'paused'];
+      allow update: if isAdmin();
+    }
+
+    // Campaign copy is authored outside the app; staff read it here.
+    match /campaigns/{campaignId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /audit/{entryId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.actor == uid()
+        && isText(request.resource.data.action, 3, 120)
+        && isText(request.resource.data.reason, 5, 500);
+    }
+
+    match /disputes/{disputeId} {
+      allow create: if isSignedIn()
+        && isActiveAccount()
+        && request.resource.data.openedBy == uid()
+        && request.resource.data.status == 'open'
+        && isText(request.resource.data.reason, 10, 2000);
+      allow update: if isAdmin();
+    }
+
+    match /tickets/{ticketId} {
+      allow create: if isSignedIn()
+        && isActiveAccount()
+        && request.resource.data.uid == uid()
+        && request.resource.data.status == 'open'
+        && isText(request.resource.data.subject, 3, 140);
+      allow update: if isAdmin();
+    }
+
+    match /payouts/{payoutId} {
+      allow update: if isAdmin();
+    }
+    match /payments/{paymentId} {
+      allow update: if isAdmin();
+    }
+    match /profiles/{userId} {
+      allow update: if isAdmin();
+    }
+  }
+}

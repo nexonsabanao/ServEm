@@ -1,0 +1,44 @@
+# Credentials and Firebase machine state — never commit these.
+serviceAccount*.json
+*firebase-admin*.json
+firebase-token.json
+*.p12
+*.key
+.google-services.json
+google-services.json
+GoogleService-Info.plist
+*.plist
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+node-debug.log
+emulator-data/
+
+# Secrets that are not the public web config.
+.env
+.env.*
+!.env.example
+
+# Design boards and shipped binaries: reference material and release artifacts, not source.
+/ServEm/
+servem_web/public/downloads/
+
+# Build output and dependencies
+node_modules/
+dist/
+build/
+coverage/
+functions/lib/
+.qoder/worktrees/
+.audit/
+
+# Editor / OS noise
+.DS_Store
+.mcp.json
+.idea/caches/
+.idea/workspace.xml
+*.iml
+
+# IDE metadata
+.idea/

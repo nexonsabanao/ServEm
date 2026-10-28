@@ -1,0 +1,73 @@
+rules_version = '2';
+
+// ============================================================================
+// ServEm Firebase Storage rules.
+//
+// Layout:
+//   /users/{uid}/profile/**      avatar/photo  — public read, owner write
+//   /users/{uid}/verification/** IDs/documents — owner + admin read ONLY
+//
+// Client uploads must be the owner, under their own uid, <= 10 MiB, and of
+// an allowed content type. No public listing anywhere. Everything else is
+// denied by the catch-all.
+// ============================================================================
+
+service firebase.storage {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.get('admin', false) == true;
+    }
+
+    function under10MiB() {
+      return request.resource.size < 10 * 1024 * 1024;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+
+    function isImageOrPdf() {
+      return request.resource.contentType.matches('(image/(jpeg|png|webp)|application/pdf)');
+    }
+
+    // Public avatars: readable by anyone, writable only by the owner.
+    match /users/{uid}/profile/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(uid) && under10MiB() && isImage();
+    }
+
+    // Listing photos: readable by anyone (they appear on cards), writable only
+    // by the owner under their own uid.
+    match /users/{uid}/listings/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(uid) && under10MiB() && isImage();
+    }
+
+    // Verification documents: owner and admin only — never public, and
+    // listing is not permitted.
+    match /users/{uid}/verification/{fileName} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isOwner(uid) && under10MiB() && isImageOrPdf();
+    }
+
+    // Defense-in-depth: nothing under /users is listable, and every other
+    // path (including legacy/default uploads) is fully denied.
+    match /users/{uid}/{allFiles=**} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow list, create, update, delete: if false;
+    }
+
+    match /{allFiles=**} {
+      allow read, write, list: if false;
+    }
+  }
+}
